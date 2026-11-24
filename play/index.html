@@ -1,0 +1,1157 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>One More Broadside — Pirate Roguelike</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+<link rel="stylesheet" href="./fonts/fonts.css" />
+<link rel="manifest" href="./manifest.webmanifest" />
+<meta name="theme-color" content="#0a1626" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="One More Broadside Demo" />
+<link rel="apple-touch-icon" href="./icons/apple-touch-icon.png" />
+<link rel="icon" type="image/png" href="./icons/favicon-32.png" />
+<style>
+  :root {
+    --gold: #e8c05a; --gold-dim: #a8843a; --parch: #f1e4c3; --ink: #1a120c; --blood: #b8352a;
+    --common: #cfcfcf; --rare: #4fa8ff; --epic: #c86bff; --legend: #ffb03a; --keystone: #ff5a4a; --relic: #5ae8d8; --mythic: #ff4fd8;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  /* the gold arrow (game/src/pointer.js installMenuPointers): inherited by everything that sets no pointer of its own */
+  html, body { cursor: var(--cur-arrow, default); }
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #050a10; font-family: 'IM Fell English', Georgia, serif; color: var(--parch); touch-action: none; user-select: none; -webkit-user-select: none; }
+  /* iPhone and iPad (12 October 2026): no rubber-band bounce, no long-press callout or magnifier, no text growing when
+     the phone turns. The screen's safe area (a notch or camera on one side, the home bar along the bottom) as four
+     lengths; env() is 0 on a computer and on phones without either, so nothing moves there (see "Safe area" below). */
+  html, body { overscroll-behavior: none; -webkit-touch-callout: none; -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+  :root { --sa-t: env(safe-area-inset-top, 0px); --sa-r: env(safe-area-inset-right, 0px); --sa-b: env(safe-area-inset-bottom, 0px); --sa-l: env(safe-area-inset-left, 0px); }
+  canvas#c { display: block; width: 100%; height: 100%; touch-action: none; }
+  #ui { position: fixed; inset: 0; pointer-events: none; }
+  .hud { position: absolute; }
+  h1, h2, .title { font-family: 'Pirata One', 'IM Fell English', serif; letter-spacing: 0.04em; }
+
+  #xpwrap { position: absolute; top: 0; left: 0; right: 0; height: 14px; background: rgba(0,0,0,0.55); border-bottom: 1px solid rgba(232,192,90,0.35); }
+  #xpbar { height: 100%; width: 0%; background: linear-gradient(90deg, #5fa2ff, #9fd0ff); box-shadow: 0 0 12px #5fa2ff; transition: width 0.15s; }
+  #xptext { position: absolute; top: -1px; left: 0; right: 0; text-align: center; font-size: 11px; line-height: 14px; color: #fff; text-shadow: 0 0 4px #000; }
+  #timer { top: 20px; left: 50%; transform: translateX(-50%); font-family: 'Pirata One', serif; font-size: 32px; text-shadow: 0 2px 6px #000, 0 0 14px rgba(232,192,90,0.35); }
+  #kills { top: 56px; left: 50%; transform: translateX(-50%); font-size: 15px; opacity: 0.9; text-shadow: 0 1px 4px #000; white-space: nowrap; }
+  #kills b { color: var(--gold); font-weight: normal; }
+  #kills .safe { color: #9fd9a6; } #kills .risk { color: #ffb08a; opacity: 0.85; }
+
+  #hpwrap { top: 26px; left: 16px; width: min(300px, 42vw); }
+  #hpwrap .label { font-family: 'Pirata One', serif; font-size: 17px; color: var(--gold); text-shadow: 0 1px 3px #000; display: flex; justify-content: space-between; }
+  #hpbar-bg { height: 15px; background: rgba(0,0,0,0.6); border: 1px solid var(--gold-dim); border-radius: 3px; overflow: hidden; }
+  #hpbar { height: 100%; width: 100%; background: linear-gradient(90deg, #a5261c, #ff5a3c); box-shadow: 0 0 10px rgba(255,90,60,0.6); transition: width 0.12s; }
+  #loadout { top: 72px; left: 16px; display: flex; flex-direction: column; gap: 3px; width: min(330px, 46vw); }
+  /* Guns on one line, crew on the next: the two do very different things and used to look identical. */
+  .wrow { display: flex; flex-wrap: wrap; gap: 5px; align-items: center; }
+  .wrow .tagline { font-size: 9px; letter-spacing: 0.12em; opacity: 0.6; text-transform: uppercase; min-width: 34px; }
+  .wslot { background: rgba(0,0,0,0.55); border: 1px solid rgba(232,192,90,0.4); border-radius: 4px; padding: 2px 6px; font-size: 12px; min-width: 38px; text-align: center; cursor: help; pointer-events: auto; touch-action: manipulation; }
+  .wslot .lv { color: var(--gold); font-weight: bold; }
+  .wslot.weapon { border-color: rgba(232,192,90,0.75); background: rgba(60,42,12,0.55); }
+  .wslot.evo { border-color: var(--legend); box-shadow: 0 0 8px rgba(255,176,58,0.5); background: rgba(70,40,10,0.6); }
+  .wslot.keystone { border-color: var(--keystone); } .wslot.relic { border-color: var(--relic); }
+  .wslot.mythic { border-color: var(--mythic); box-shadow: 0 0 8px rgba(255,79,216,0.55); }
+  .wslot.passive { border-color: rgba(160,190,220,0.6); background: rgba(18,32,48,0.6); border-style: dashed; }
+  /* each chip underlined in its card's colour (data/damage-types.js) */
+  .wslot[style*="--dc"] { border-bottom: 2px solid var(--dc); }
+  .wslot.boon { border-color: rgba(140,220,150,0.6); background: rgba(16,38,20,0.6); border-style: dashed; }
+  /* what a chip actually does, on hover or a tap */
+  #tip { position: absolute; z-index: 40; max-width: 300px; background: linear-gradient(180deg, rgba(30,22,12,0.98), rgba(12,9,5,0.99)); border: 1px solid var(--gold-dim); border-radius: 6px; padding: 8px 10px; font-size: 13px; line-height: 1.35; display: none; pointer-events: none; box-shadow: 0 6px 20px rgba(0,0,0,0.7); }
+  #tip .tname { font-family: 'Pirata One', serif; font-size: 17px; color: var(--gold); }
+  #tip .ttype { font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; opacity: 0.75; }
+  #tip .trank { color: var(--gold); font-size: 12px; }
+  #tip .tdesc { margin-top: 4px; opacity: 0.92; }
+
+  #compass { top: 24px; right: 14px; width: 112px; text-align: center; }
+  #compass svg { width: 84px; height: 84px; filter: drop-shadow(0 2px 4px #000); }
+  #weathertext { font-family: 'Pirata One', serif; font-size: 18px; color: var(--gold); text-shadow: 0 1px 3px #000; line-height: 1; }
+  #timeofday { font-size: 12px; opacity: 0.8; }
+  #tailwind { display: inline-block; margin-top: 3px; padding: 1px 8px; font-size: 12px; border-radius: 10px; border: 1px solid rgba(160,208,255,0.5); color: #9fd0ff; background: rgba(0,0,0,0.45); opacity: 0.35; transition: opacity 0.2s, box-shadow 0.2s; }
+  #tailwind.on { opacity: 1; box-shadow: 0 0 10px rgba(120,190,255,0.7); }
+  /* poison and bleed (ui.afflictions), and the ship's compass at a voyage's start (ui.shipCompass) */
+  #afflict { display: flex; gap: 6px; margin-top: 4px; }
+  #afflict .aff { padding: 2px 9px; border-radius: 10px; font-size: 13px; font-weight: 600; background: rgba(0,0,0,0.6); border: 1px solid; }
+  #afflict .aff b { font-weight: 700; margin-left: 3px; }
+  #afflict .poison { color: #d8ff4a; border-color: #c8ff1a; box-shadow: 0 0 8px rgba(200,255,26,0.45); }
+  #afflict .bleed { color: #ff6a7a; border-color: #c8102e; box-shadow: 0 0 8px rgba(200,16,46,0.5); }
+  #hpbar.poisoned { background: linear-gradient(90deg, #6a9a10, #c8ff1a) !important; }
+  #hpbar.bleeding { background: linear-gradient(90deg, #6a0818, #c8102e) !important; }
+  /* the ship's compass rose (ui.shipCompass): ink and parchment, as on a chart, with the chart's own lettering */
+  #ui:not(.ingame) #shipcompass { display: none !important; }
+  #shipcompass { position: fixed; left: 0; top: 0; width: 100vw; height: 100vh; pointer-events: none; overflow: visible; }
+  #shipcompass .band { fill: none; stroke: rgba(239,224,180,0.55); stroke-width: 0.06; }
+  #shipcompass .ring { fill: none; stroke: #2a180a; stroke-width: 1.4; vector-effect: non-scaling-stroke; }
+  #shipcompass .tick { fill: none; stroke: #2a180a; stroke-width: 1; vector-effect: non-scaling-stroke; }
+  #shipcompass .edge { fill: none; stroke: #2a180a; stroke-width: 1.2; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
+  #shipcompass .jewel { fill: #f6d77a; stroke: #2a180a; stroke-width: 1.2; vector-effect: non-scaling-stroke; }
+  #shipcompass text { font-family: 'Pirata One', serif; font-size: 22px; letter-spacing: 0.04em; text-anchor: middle; dominant-baseline: central;
+    fill: #f3e3b5; stroke: #1e1208; stroke-width: 4px; stroke-linejoin: round; paint-order: stroke; }
+  #shipcompass text.bow { fill: #f6d77a; font-size: 24px; }
+  #shipcompass text.port { fill: #f0a08e; }
+  #shipcompass text.starboard { fill: #a8e2b2; }
+  #boon { display: none; margin-top: 3px; padding: 1px 8px; font-size: 12px; border-radius: 10px; border: 1px solid rgba(242,223,160,0.55); color: #f2dfa0; background: rgba(0,0,0,0.45); white-space: nowrap; }
+  #secretdist { font-size: 12px; color: #ffd98a; min-height: 14px; text-shadow: 0 1px 3px #000; }
+  #portdist { font-size: 12px; color: #cfe8ff; min-height: 14px; text-shadow: 0 1px 3px #000; }
+  #belldist { font-size: 12px; color: #ffb39a; min-height: 0; text-shadow: 0 1px 3px #000; }
+
+  /* the boss's name and health: small and quiet at the foot of the screen (the user found it intrusive, 1 October 2026) */
+  #bosswrap { display: none; position: absolute; bottom: 18px; left: 50%; transform: translateX(-50%); width: min(420px, 60vw); text-align: center; opacity: 0.88; pointer-events: none; }
+  #bossname { font-family: 'Pirata One', serif; font-size: 16px; line-height: 1.2; color: #f0a090; text-shadow: 0 1px 3px #000; }
+  #bossbar-bg { height: 7px; background: rgba(0,0,0,0.55); border: 1px solid rgba(255,106,90,0.6); border-radius: 3px; overflow: hidden; }
+  #bossbar { height: 100%; width: 100%; background: linear-gradient(90deg, #7a0f0f, #e0402e); }
+  /* A boss's Maw (bosses.js MAW, 13 October 2026): its time to the ship's sinking, over the boss bar in the first doom's
+     warning colours (#announce.doom), large enough to read at a glance on a phone; it stays at the foot of the screen, off
+     the play area. Its bar drains with the time; in the last ten seconds it darkens and brightens (steadily: no flashing). */
+  #mawclock { display: none; width: max-content; min-width: 62%; margin: 0 auto 5px; padding: 2px 14px 5px; border-radius: 9px; background: rgba(40, 6, 4, 0.86);
+    border: 1px solid rgba(255, 96, 64, 0.75); font-family: 'Pirata One', serif; font-size: 20px; line-height: 1.15; color: #ff7a5a; text-shadow: 0 1px 3px #000; }
+  #mawclock b { font-size: 27px; font-weight: normal; color: #ffd8c8; margin-left: 8px; font-variant-numeric: tabular-nums; }
+  #mawbar-bg { height: 5px; margin-top: 2px; background: rgba(255, 255, 255, 0.12); border-radius: 3px; overflow: hidden; }
+  #mawbar { height: 100%; width: 100%; background: linear-gradient(90deg, #ff3a2a, #ff9a5a); }
+  #mawclock.last { background: rgba(70, 6, 4, 0.92); border-color: #ff5a3a; }
+  #mawclock.last b { color: #fff; }
+  @media (max-height: 500px) { #mawclock { font-size: 16px; padding: 1px 10px 4px; margin-bottom: 3px; } #mawclock b { font-size: 21px; } }
+  #prompt { display: none; position: absolute; bottom: 92px; left: 50%; transform: translateX(-50%); width: min(360px, 70vw); text-align: center; font-size: 17px; text-shadow: 0 1px 4px #000; }
+  #promptbar-bg { height: 8px; margin-top: 4px; background: rgba(0,0,0,0.6); border: 1px solid #9fd0ff; border-radius: 4px; overflow: hidden; }
+  #promptbar { height: 100%; width: 0%; background: linear-gradient(90deg, #5ac8ff, #ffffff); }
+
+  .dmg { position: absolute; font-family: 'Pirata One', serif; font-size: 17px; color: #fff; text-shadow: 0 0 4px #000, 0 2px 2px #000; pointer-events: none; will-change: transform, opacity; white-space: nowrap; }
+  .dmg.label { color: #ffe9a8; font-size: 20px; text-shadow: 0 0 8px #000, 0 2px 3px #000; }
+  /* the label riding over a boss (and at the screen's edge when it is off screen): small, dark, not a red flag */
+  #bosstag { position: absolute; top: 0; left: 0; display: none; font-family: 'Pirata One', serif; font-size: 13px; color: #f0b8a8; white-space: nowrap; padding: 0 7px; border: 1px solid rgba(255,106,90,0.45); border-radius: 9px; background: rgba(30,6,4,0.55); text-shadow: 0 1px 2px #000; pointer-events: none; }
+  #bosstag.off { font-size: 13px; color: #ffd0c4; background: rgba(70,12,8,0.6); }
+  /* the Spyglass card's lookout: something seen out on the water (discoveries.js) */
+  #findtag { position: absolute; top: 0; left: 0; display: none; font-family: 'Pirata One', serif; font-size: 13px; color: #f2dfa0; white-space: nowrap; padding: 0 7px; border: 1px solid rgba(242,223,160,0.45); border-radius: 9px; background: rgba(20,16,4,0.5); text-shadow: 0 1px 2px #000; pointer-events: none; }
+  /* a directional event's ships out of view (game.js updateEventMark): where the gauntlet, the line or the patrol is */
+  #eventtag { position: absolute; top: 0; left: 0; display: none; font-family: 'Pirata One', serif; font-size: 13px; color: #ffd9a0; white-space: nowrap; padding: 0 7px; border: 1px solid rgba(255,170,80,0.5); border-radius: 9px; background: rgba(40,18,4,0.55); text-shadow: 0 1px 2px #000; pointer-events: none; }
+  .dmg.crit { color: #ffd23a; font-size: 23px; text-shadow: 0 0 8px #ff9a1a, 0 2px 2px #000; }
+  .dmg.burn { color: #ff8a3a; font-size: 14px; } .dmg.heal { color: #6fff8a; } .dmg.player { color: #ff5a4a; font-size: 22px; } .dmg.shock { color: #9fe0ff; }
+
+  .overlay { position: absolute; inset: 0; display: none; align-items: center; justify-content: center; background: radial-gradient(ellipse at center, rgba(5,12,20,0.55), rgba(2,5,10,0.92)); pointer-events: auto; overflow-y: auto; padding: 12px; }
+  .overlay.show { display: flex; }
+  /* The first-time guide (tutorial.js): the screen dims round a lit window, and a note sits beside it. */
+  #tut { position: fixed; inset: 0; z-index: 60; display: none; pointer-events: auto; touch-action: none; }
+  #tut.on { display: block; }
+  #tut.centre { background: rgba(2,6,12,0.62); }
+  #tut .tut-hole { position: absolute; border: 2px solid var(--gold); border-radius: 10px; box-shadow: 0 0 0 9999px rgba(2,6,12,0.62), 0 0 18px rgba(232,192,90,0.7); pointer-events: none; animation: tutpulse 1.6s ease-in-out infinite; }
+  @keyframes tutpulse { 50% { box-shadow: 0 0 0 9999px rgba(2,6,12,0.62), 0 0 30px rgba(232,192,90,0.95); } }
+  #tut .tut-note { position: absolute; width: min(340px, 86vw); background: linear-gradient(180deg, rgba(34,25,15,0.98), rgba(16,11,7,0.98)); border: 2px solid var(--gold-dim); border-radius: 10px; padding: 12px 16px 12px; box-shadow: 0 6px 30px rgba(0,0,0,0.7); color: var(--parch); font-size: 15px; line-height: 1.4; }
+  #tut .tut-title { display: block; font-family: 'Pirata One', serif; font-weight: normal; font-size: 22px; color: var(--gold); margin-bottom: 2px; }
+  #tut .tut-text { margin: 4px 0 10px; }
+  #tut .tut-count { float: right; font-size: 12px; opacity: 0.6; margin-top: 4px; }
+  #tut .tut-btns { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+  #tut .tut-skip { font-size: 13px; opacity: 0.7; cursor: var(--cur-pointer, pointer); text-decoration: underline; }
+  #tut .tut-next { margin: 0; padding: 6px 22px; font-size: 18px; }
+  /* the page refuses touch gestures (the game steers with them), so a menu has to ask for vertical scrolling back */
+  .overlay, .overlay .panel, .overlay .panel * { touch-action: pan-y; }
+  .panel { background: linear-gradient(180deg, rgba(28,20,12,0.96), rgba(14,10,6,0.98)); border: 2px solid var(--gold-dim); border-radius: 10px; padding: 22px 28px; box-shadow: 0 0 40px rgba(0,0,0,0.8), inset 0 0 30px rgba(232,192,90,0.06); max-width: min(1080px, calc(94vw / var(--ui-scale, 1))); max-height: calc((100vh - 24px) / var(--ui-scale, 1)); overflow-y: auto; text-align: center; margin: auto; }
+  .panel h1 { margin: 0 0 6px; font-size: clamp(32px, 6.4vw, 64px); color: var(--gold); text-shadow: 0 0 20px rgba(232,192,90,0.4), 0 3px 0 #3a2a10; }
+  .panel h2 { margin: 0 0 8px; font-size: clamp(26px, 5vw, 36px); color: var(--gold); }
+  .panel p { margin: 6px 0; font-size: 16px; line-height: 1.4; }
+  /* What's new (ui.showWhatsNew): each release's lines as a short list, upright, a gold bullet before each */
+  #notetext .wnline { display: block; position: relative; text-align: left; font-style: normal; font-size: 16px; margin: 7px 0; padding-left: 20px; }
+  #notetext .wnline::before { content: '•'; position: absolute; left: 4px; color: var(--gold); }
+  #notetext .wnver { display: block; margin: 12px 0 2px; font-family: 'Pirata One', serif; font-style: normal; font-size: 20px; color: var(--gold); }
+  .sub { opacity: 0.8; margin-top: -4px !important; }
+  .btn { display: inline-block; margin: 14px 6px 0; padding: 9px 26px; font-family: 'Pirata One', serif; font-size: 24px; color: var(--ink); background: linear-gradient(180deg, #f0cf6d, #b88b2e); border: 1px solid #6b4d14; border-radius: 6px; cursor: var(--cur-pointer, pointer); box-shadow: 0 3px 0 #5a3d0f, 0 0 16px rgba(232,192,90,0.3); }
+  .btn.alt { background: linear-gradient(180deg, #5a6a7a, #2f3a46); color: var(--parch); border-color: #1a222a; box-shadow: 0 3px 0 #141a20; font-size: 19px; }
+  .btn.small { font-size: 18px; padding: 5px 18px; margin: 0; }
+  .btn.small.spent { opacity: 0.4; cursor: var(--cur-arrow, default); filter: grayscale(1); }
+  .btn.small.alt { font-size: 18px; padding: 5px 18px; margin: 0; }
+  body.banishing .card { outline: 1px dashed var(--keystone); cursor: var(--cur-banish, crosshair); }
+  body.banishing .card:hover { outline-color: #fff; box-shadow: 0 0 18px rgba(255,90,74,0.6); }
+  .cardfoot { display: flex; align-items: center; justify-content: space-between; gap: 14px; margin-top: 12px; }
+  .slots { font-size: 15px; letter-spacing: 0.04em; opacity: 0.85; text-align: left; }
+  .slots b { color: var(--gold, #e8c05a); font-weight: normal; }
+  .btn:hover { filter: brightness(1.1); }
+  .btn:active { transform: translateY(2px); }
+  .focus { outline: 3px solid #fff !important; outline-offset: 3px; box-shadow: 0 0 22px rgba(255,255,255,0.55) !important; }
+  /* a long list in focus (the Log, the Charts: data-scroll) is outlined, not lit up, so it can still be read */
+  [data-scroll].focus { outline: 2px solid rgba(255,255,255,0.8) !important; outline-offset: 2px; box-shadow: none !important; }
+  /* Controller glyphs (framework overlaynav.js fills [data-glyph] for the device in use): only while a pad is in use.
+     The number keys on the cards are the keyboard's, so they go while a pad is in use. */
+  .padkey { display: none; } body[data-device=gamepad] .padkey { display: inline-block; }
+  .padkey { margin-right: 6px; padding: 0 5px; border: 1px solid currentColor; border-radius: 4px; font-family: Georgia, serif; font-size: 0.72em; line-height: 1.35; vertical-align: 0.12em; opacity: 0.85; }
+  .porttabs .tabkey { align-self: center; margin: 0 6px; font-size: 12px; color: var(--parch); opacity: 0.6; }
+  body[data-device=gamepad] .card .key { display: none; }
+
+  /* The music question on the first Make Port (ui.showMusicChoice): two big choices, the lit one is the one playing. */
+  .musicopts { display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; margin: 14px 0 6px; }
+  .musicopt { flex: 1 1 220px; max-width: 270px; padding: 16px 16px 14px; border: 2px solid var(--gold-dim); border-radius: 12px; cursor: var(--cur-pointer, pointer);
+    background: linear-gradient(180deg, rgba(40,30,18,0.98), rgba(18,12,8,0.98)); transition: transform 0.12s, border-color 0.12s, box-shadow 0.12s; }
+  .musicopt .micon { font-size: 46px; filter: drop-shadow(0 2px 2px #000); }
+  .musicopt .mname { font-family: 'Pirata One', serif; font-size: 27px; color: var(--gold); line-height: 1.1; margin: 2px 0 6px; }
+  .musicopt .mblurb { font-size: 15px; line-height: 1.35; min-height: 3.9em; }
+  .musicopt .mpick { margin-top: 10px; font-family: 'Pirata One', serif; font-size: 18px; color: var(--gold); opacity: 0; transition: opacity 0.12s; }
+  .musicopt.on, .musicopt.focus, .musicopt:hover { border-color: var(--gold); transform: translateY(-4px); box-shadow: 0 0 22px rgba(232,192,90,0.4); }
+  .musicopt.on .mpick, .musicopt.focus .mpick, .musicopt:hover .mpick { opacity: 1; }
+  .musicnote { font-size: 14px; opacity: 0.85; margin: 8px 0 0; } .musicnote b { color: var(--gold); font-weight: normal; }
+  /* One row however many cards are dealt (the owner, 4 November 2026: no scroll bars at four or five): each card is up to
+     224px and narrows to share the panel; a narrow card sets its text smaller (@container below). Phones wrap (max-width 640px). */
+  .cards { display: flex; gap: 16px; justify-content: center; margin-top: 10px; flex-wrap: nowrap; }
+  .cards:has(> .card:nth-child(4)) { gap: 12px; }
+  /* A card's colour (--dc, set by ui.dressCard from data/damage-types.js) is what it does: the border, the head plate,
+     the icon's medallion, the chip under the name and the numbers in the text. The rarity is the small line
+     beside the chip, and the glow round a legend, keystone or relic. Ranks are pips along the foot, the new one lit. */
+  /* The frame: a thin outer edge in the card's colour, a dark gap and a faint inner line (--frame, kept under every
+     rarity glow). The head is a tinted plate inset from the edge, the icon a medallion sitting across the plate's foot. */
+  .card { --frame: 0 8px 20px rgba(0,0,0,0.55), inset 0 0 0 3px rgba(14,9,6,0.95), inset 0 0 0 4px var(--dcg, rgba(241,228,195,0.2));
+    width: 224px; flex: 0 1 224px; min-width: 0; container-type: inline-size; min-height: 250px; background: linear-gradient(180deg, rgba(38,28,17,0.98), rgba(16,11,7,0.98));
+    border: 1px solid var(--dc, var(--common)); border-radius: 12px; padding: 14px 14px 12px; cursor: var(--cur-pointer, pointer); text-align: left; transition: transform 0.12s, box-shadow 0.12s; position: relative; display: flex; flex-direction: column; overflow: hidden; box-shadow: var(--frame); }
+  .card::before { content: ''; position: absolute; left: 4px; right: 4px; top: 4px; height: 47px; border-radius: 8px 8px 0 0; pointer-events: none;
+    background: repeating-linear-gradient(135deg, rgba(255,255,255,0.035) 0 2px, transparent 2px 7px), linear-gradient(180deg, var(--dcg, transparent), var(--dcs, transparent));
+    border-bottom: 1px solid var(--dcg, transparent); }
+  .card > * { position: relative; }
+  .card:hover, .card.focus { transform: translateY(-6px) scale(1.03); box-shadow: var(--frame), 0 0 16px var(--dcg, transparent); }
+  .card .icon { width: 62px; height: 62px; margin: 6px auto 8px; display: flex; align-items: center; justify-content: center; font-size: 32px; border-radius: 50%;
+    background: radial-gradient(circle, var(--dcs, transparent) 0%, rgba(14,9,6,1) 72%); border: 2px solid var(--dc, var(--common)); box-shadow: 0 0 0 3px rgba(14,9,6,0.95), 0 0 12px var(--dcg, transparent); }
+  .card .name { font-family: 'Pirata One', serif; font-size: 22px; color: var(--gold); line-height: 1.05; text-align: center; text-shadow: 0 2px 3px #000; }
+  .card .chips { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 4px 8px; margin: 6px 0 9px; padding-bottom: 9px;
+    border-bottom: 1px solid; border-image: linear-gradient(90deg, transparent, var(--dcg, rgba(241,228,195,0.3)), transparent) 1; }
+  .card .dtype { font-size: 12px; font-weight: bold; letter-spacing: 0.06em; text-transform: uppercase; padding: 1px 9px; border-radius: 999px; color: var(--dc); border: 1px solid var(--dc); background: var(--dcs); white-space: nowrap; }
+  .card .tag { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--common); opacity: 0.9; }
+  .card .desc { font-size: 14px; line-height: 1.32; opacity: 0.95; }
+  .card .desc b { color: var(--dc, var(--gold)); font-weight: bold; }
+  .card .desc .cost { color: #f0a597; } .card .desc .cost b { color: #ff5c4a; }   /* a keystone's or relic's price */
+  .card .desc.short { font-size: 17px; line-height: 1.3; text-align: center; margin-top: 4px; }
+  @container (max-width: 196px) {
+    .card .name { font-size: 19px; } .card .desc { font-size: 13px; line-height: 1.28; } .card .desc.short { font-size: 15px; }
+    .card .dtype { font-size: 11px; padding: 1px 7px; } .card .tag { font-size: 10px; letter-spacing: 0.06em; }
+  }
+  .card .pips { display: flex; gap: 4px; justify-content: center; margin-top: auto; padding-top: 10px; }
+  .card .pips i { flex: 0 1 16px; height: 5px; border-radius: 3px; background: rgba(241,228,195,0.14); }
+  .card .pips i.on { background: var(--dc); opacity: 0.6; }
+  .card .pips i.up { background: var(--dc); box-shadow: 0 0 7px var(--dc); }
+  .card .lv { position: absolute; z-index: 2; top: 11px; right: 12px; font-size: 11.5px; font-weight: bold; color: var(--gold); letter-spacing: 0.08em; text-shadow: 0 1px 2px #000; }
+  .card .lv:empty { display: none; }
+  /* rarity gems set in the foot of the icon's medallion, clear of the corner labels: one for common up to four for
+     legendary (keystone, relic and evolution too), five for a mythic, in the rarity's colour (ui.js RARITY) */
+  .card { --rc: var(--common); } .card.rare { --rc: var(--rare); } .card.epic { --rc: var(--epic); } .card.legend { --rc: var(--legend); }
+  .card.keystone { --rc: var(--keystone); } .card.relic { --rc: var(--relic); } .card.mythic { --rc: var(--mythic); }
+  .card .gems { position: absolute; top: 79px; left: 0; right: 0; z-index: 1; display: flex; justify-content: center; gap: 4px; pointer-events: none; }
+  .card .gems i { width: 8px; height: 8px; transform: rotate(45deg); background: var(--rc); border: 1px solid rgba(14,9,6,0.9); box-shadow: 0 0 5px var(--rc); }
+  .card .tag { color: var(--rc); font-weight: bold; }
+  .card .key { position: absolute; z-index: 2; top: 11px; left: 12px; min-width: 18px; text-align: center; font-size: 11px; line-height: 16px; color: var(--parch, #f1e4c3); background: rgba(14,9,6,0.7); border: 1px solid var(--dcg, rgba(241,228,195,0.4)); border-radius: 4px; padding: 0 4px; }
+  .card.rare .tag { color: var(--rare); }
+  .card.epic .tag { color: var(--epic); }
+  .card.legend { box-shadow: var(--frame), 0 0 18px rgba(255,176,58,0.35); } .card.legend .tag { color: var(--legend); }
+  .card.keystone { box-shadow: var(--frame), 0 0 18px rgba(255,90,74,0.35); } .card.keystone .tag { color: var(--keystone); }
+  .card.relic { box-shadow: var(--frame), 0 0 18px rgba(90,232,216,0.35); } .card.relic .tag { color: var(--relic); }
+  /* the pause menu's key to the card colours (ui.setAffixKey) */
+  .affixkey .cardkey { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 4px 6px; align-items: center; }
+  .affixkey .ck { color: var(--dc); border: 1px solid var(--dc); border-radius: 999px; padding: 0 8px; font-size: 11.5px; white-space: nowrap; }
+  .affixkey .cksep { opacity: 0.4; margin: 0 2px; }
+  .card.reveal { animation: reveal 0.5s both; cursor: var(--cur-arrow, default); }
+  /* A mythic card (data/mythic.js, ui.js crackle): a magenta no other card uses, a dark violet field, a glow that swells and
+     settles, and arcs of light on a canvas round its border. Still with Reduce motion or reduced-motion. */
+  .card.mythic { border-color: var(--mythic); background: radial-gradient(120% 90% at 50% 0%, rgba(120,30,110,0.98), rgba(30,8,34,0.98) 62%, rgba(14,4,18,0.98)); box-shadow: 0 0 22px rgba(255,79,216,0.55), inset 0 0 18px rgba(255,79,216,0.25); animation: mythicglow 1.8s ease-in-out infinite; overflow: visible; }
+  .card.mythic .tag { color: var(--mythic); font-weight: bold; text-shadow: 0 0 6px rgba(255,79,216,0.8); }
+  .card.mythic .name { color: #ffe6fb; text-shadow: 0 0 10px rgba(255,79,216,0.85); }
+  .card.mythic .lv { color: var(--mythic); letter-spacing: 0.14em; font-weight: bold; }
+  .card.mythic .icon { border-color: var(--mythic); box-shadow: 0 0 0 3px rgba(30,8,34,0.95), 0 0 14px rgba(255,79,216,0.7); background: radial-gradient(circle, rgba(255,79,216,0.25) 0%, rgba(30,8,34,1) 72%); }
+  .card.mythic::before { background: repeating-linear-gradient(135deg, rgba(255,255,255,0.04) 0 2px, transparent 2px 7px), linear-gradient(180deg, rgba(255,79,216,0.35), rgba(255,79,216,0.08)); border-bottom-color: rgba(255,79,216,0.5); }
+  .card.mythic .crackle { position: absolute; left: -14px; top: -14px; width: calc(100% + 28px); height: calc(100% + 28px); pointer-events: none; }
+  /* an Empower card (mythic.js offerEmpower): the same crackle, a gold inner edge and the rank it brings, large */
+  .card.mythic.empower { box-shadow: 0 0 22px rgba(255,79,216,0.55), inset 0 0 0 2px rgba(255,214,120,0.55), inset 0 0 18px rgba(255,79,216,0.25); }
+  .card.mythic.empower .lv { color: #ffd678; }
+  .card .rankmark { font-family: 'Pirata One', serif; font-size: 30px; color: #ffd678; margin-left: 6px; vertical-align: middle; text-shadow: 0 0 10px rgba(255,79,216,0.9); }
+  .card.mythic.calm { animation: none; box-shadow: 0 0 26px rgba(255,79,216,0.65), inset 0 0 18px rgba(255,79,216,0.3); }
+  @keyframes mythicglow { 0%, 100% { box-shadow: 0 0 18px rgba(255,79,216,0.45), inset 0 0 14px rgba(255,79,216,0.2); } 50% { box-shadow: 0 0 34px rgba(255,79,216,0.8), inset 0 0 22px rgba(255,79,216,0.35); } }
+  @media (prefers-reduced-motion: reduce) { .card.mythic { animation: none; } }
+  /* revealed in place: starting each card 30 px low pushed it past the bottom of the chest's card row and brought up a
+     scrollbar for the length of the animation on short (phone) screens */
+  @keyframes reveal { from { transform: scale(0.8) rotateY(90deg); opacity: 0; } to { transform: none; opacity: 1; } }
+  /* overlays can still scroll when a panel genuinely does not fit, but never show a scrollbar doing it */
+  .overlay, .overlay .cards { scrollbar-width: none; }
+  .overlay::-webkit-scrollbar, .overlay .cards::-webkit-scrollbar { display: none; }
+  .goldline { font-family: 'Pirata One', serif; font-size: 26px; color: var(--gold); margin-top: 10px; }
+
+  /* The roster is the one grid that has to fit a known number of tiles, so its columns follow width alone: five
+     across keeps twenty captains in four rows, which is what lets a landscape phone show them all without scrolling. */
+  .grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; margin-top: 10px; }
+  @media (max-width: 780px) { .grid { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+  @media (max-width: 560px) { .grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+  @media (max-width: 420px) { .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  @media (max-width: 640px) { .cards { flex-wrap: wrap; } .card { flex: 0 0 calc(44vw / var(--ui-scale, 1)); min-height: 0; } }
+  /* short screens: the cards have to lose their fixed height or three of them will not fit above the fold */
+  @media (max-height: 560px) { .card { min-height: 0; } .card .desc { font-size: 13px; } .panel { padding: 14px 18px; } }
+
+  /* ---- captain select. The panel is fixed; only the roster moves, so the buttons are always reachable. */
+  .capcols { display: flex; gap: 16px; align-items: stretch; text-align: left; }
+  .capscroll { flex: 1 1 auto; overflow-y: auto; min-height: 0; padding: 8px 10px 8px 8px; -webkit-overflow-scrolling: touch; }
+  /* (no fade at the foot of the roster since 7 November 2026: set once as the screen opened, it stayed over the last row
+     when scrolled down to it, the owner; the scroll bar and the row cut off at the foot say there is more) */
+  .capside { flex: 0 0 clamp(200px, 26%, 290px); display: flex; flex-direction: column; justify-content: space-between; gap: 8px; }
+  .capbtns { display: flex; flex-direction: column; align-items: stretch; gap: 8px; }
+  .capbtns .btn { margin: 0; text-align: center; }
+  @media (max-height: 620px) {
+    .caps .grid { gap: 7px; margin-top: 6px; }
+    .caps .cap { min-height: 66px; padding: 4px 5px 5px; }
+    .caps .cap .icon { font-size: 22px; }
+    .caps .cap .name { font-size: 14px; }
+    .caps .capbtns .btn { font-size: 19px; padding: 6px 14px; }
+    .caps h2 { font-size: 26px; margin-bottom: 4px; }
+  }
+  /* portrait / narrow: stack it back up, roster first */
+  @media (max-width: 720px) and (orientation: portrait) { .capcols { flex-direction: column; } .capside { flex: 0 0 auto; } .capbtns { flex-direction: row; flex-wrap: wrap; justify-content: center; } }
+
+  /* ---- what the rings around elite ships mean */
+  .affixkey { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 4px 12px; margin: 10px 0 4px; text-align: left; font-size: 12px; }
+  .affixkey .hdr { grid-column: 1 / -1; font-family: 'Pirata One', serif; font-size: 16px; color: var(--gold); margin-top: 4px; }
+  .affixkey .row { display: flex; align-items: baseline; gap: 6px; }
+  .affixkey .dot { width: 9px; height: 9px; border-radius: 50%; flex: 0 0 auto; box-shadow: 0 0 6px currentColor; background: currentColor; }
+  .affixkey b { color: var(--parch); font-weight: normal; }
+  .affixkey span.what { opacity: 0.75; }
+
+  #ui.ingame .ingame-hide { display: none; }
+  /* ---- the port: one row of tabs shared by every between-runs screen */
+  .porttabs { display: flex; gap: 4px; justify-content: center; flex-wrap: wrap; margin: -6px 0 10px; }
+  .ptab { font-family: 'Pirata One', serif; font-size: 19px; padding: 3px 16px; color: var(--parch); opacity: 0.6;
+    border: 1px solid transparent; border-bottom: 1px solid var(--gold-dim); border-radius: 6px 6px 0 0; cursor: var(--cur-pointer, pointer); }
+  .ptab:hover { opacity: 0.9; }
+  .ptab.on { opacity: 1; color: var(--gold); border-color: var(--gold-dim); border-bottom-color: transparent; background: rgba(232,192,90,0.08); }
+  @media (max-height: 620px) { .ptab { font-size: 16px; padding: 2px 11px; } .porttabs { margin-bottom: 6px; } }
+
+  /* ---- the charts: discoveries per sea (ui.showCharts) */
+  .charts { text-align: left; max-height: calc(66vh / var(--ui-scale, 1)); overflow-y: auto; padding-right: 10px; }
+  .chartsea { margin: 0 0 14px; }
+  .chartsea h3 { font-family: 'Pirata One', serif; font-size: 19px; color: var(--gold); margin: 0 0 2px; font-weight: normal; letter-spacing: 0.03em; }
+  .chartsea h3 span { font-family: Georgia, serif; font-size: 13px; color: var(--parch); opacity: 0.8; margin-left: 8px; }
+  .chartsea .prize { font-size: 12px; opacity: 0.7; margin-bottom: 4px; }
+  .chartsintro { font-size: 13px; opacity: 0.85; margin: 0 0 10px; }
+  .chartgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 2px 22px; }
+  .disc { font-size: 13px; padding: 5px 0; border-top: 1px solid rgba(232,192,90,0.1); opacity: 0.45; }
+  .disc.got { opacity: 1; }
+  .disc .dname { color: var(--parch); }
+  .disc .dname b { color: var(--gold); font-weight: normal; }
+  .disc .dtext { font-size: 12px; opacity: 0.85; margin-top: 2px; }
+  .disc .dtimes { float: right; color: var(--gold); font-size: 12px; }
+  .panel:has(.porttabs) .charts { max-height: none; flex: 1 1 auto; min-height: 0; }
+  @media (max-height: 620px) { .panel:has(.porttabs) .charts { overflow: visible; } }
+
+  /* ---- the ship's log */
+  .logcols { display: flex; gap: 30px; text-align: left; align-items: stretch; }
+  .logstats { flex: 1 1 auto; display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 2px 34px; align-content: start;
+    max-height: calc(62vh / var(--ui-scale, 1)); overflow-y: auto; padding-right: 10px; }
+  .logstats div { display: flex; justify-content: space-between; align-items: baseline; gap: 20px; font-size: 15px; padding: 5px 0 4px; }
+  .logstats div + div { border-top: 1px solid rgba(232,192,90,0.1); }
+  .logstats span { color: var(--gold); font-variant-numeric: tabular-nums; }
+  .logstats .head { grid-column: 1 / -1; font-family: 'Pirata One', serif; font-size: 19px; color: var(--gold); border: 0 !important;
+    margin: 16px 0 2px; display: block; letter-spacing: 0.03em; }
+  .logstats .head:first-child { margin-top: 0; }
+  .logfeats { flex: 0 0 clamp(210px, 32%, 330px); display: flex; flex-direction: column; min-height: 0; }
+  .feathead { font-family: 'Pirata One', serif; font-size: 18px; color: var(--gold); margin-bottom: 4px; }
+  .featlist { overflow-y: auto; max-height: calc(60vh / var(--ui-scale, 1)); padding-right: 8px; }
+  .feat { display: flex; gap: 9px; align-items: baseline; font-size: 13px; padding: 6px 0; opacity: 0.4; }
+  .feat + .feat { border-top: 1px solid rgba(232,192,90,0.08); }
+  .feat.got { opacity: 1; }
+  .feat .tick { color: var(--gold); width: 14px; flex: 0 0 auto; }
+  .feat .fname { color: var(--parch); }
+  .feat .ftext { opacity: 0.7; font-size: 12px; }
+  @media (max-width: 720px) { .logcols { flex-direction: column; gap: 10px; } .logfeats { flex: 1 1 auto; } }
+
+  /* ---- the dry dock */
+  .dock { text-align: left; max-height: calc(64vh / var(--ui-scale, 1)); overflow-y: auto; }
+  /* the maker of the player's own captain (ui.showMaker) */
+  .cap.custom { border-style: dashed; }
+  .maker .mkrow { margin: 6px 0; } .maker .mkrow b { display: block; font-size: 14px; color: var(--gold); font-family: 'Pirata One', serif; font-weight: normal; }
+  .maker .mkopts { display: flex; flex-wrap: wrap; gap: 4px; }
+  .maker .opt { padding: 3px 8px; font-size: 12px; border: 1px solid rgba(232,192,90,0.35); border-radius: 5px; background: rgba(0,0,0,0.35); cursor: var(--cur-pointer, pointer); opacity: 0.8; }
+  .maker .opt.on { background: var(--gold); color: #1c140a; opacity: 1; }
+  .maker .mkname { display: block; margin: 6px 0; padding: 2px 4px; font-size: 14px; border-radius: 5px; } .maker .mkname input { font: inherit; font-size: 15px; padding: 3px 6px; width: 52%; background: rgba(0,0,0,0.4); color: var(--parch); border: 1px solid var(--gold-dim); border-radius: 4px; }
+  .maker .mkhint { font-size: 11px; opacity: 0.7; white-space: nowrap; } body[data-device=mouse] .maker .mkhint, body[data-device=touch] .maker .mkhint { display: none; }
+  /* the maker's own screen (28 October 2026: it was a long scroll in the crew screen's side panel): two columns of choices,
+     the name and its keyboard across the top, the buttons kept in view at the foot */
+  .makerpanel { width: min(1080px, calc(94vw / var(--ui-scale, 1))); text-align: left; padding-bottom: 0 !important; }
+  .makerpanel h2 { text-align: center; }
+  .makerpanel .maker { display: grid; grid-template-columns: 1fr 1fr; gap: 2px 26px; }
+  .makerpanel .maker .mkname, .makerpanel .oskb, .makerpanel .mkfoot { grid-column: 1 / -1; }
+  .makerpanel .mkcol { min-width: 0; align-self: start; }
+  .makerpanel .maker .mkrow { margin: 4px 0 10px; } .makerpanel .maker .mkrow b { font-size: 17px; }
+  .makerpanel .maker .opt { font-size: 13px; padding: 4px 9px; }
+  .makerpanel .oskb { max-width: 560px; margin-left: auto; margin-right: auto; }
+  .makerpanel .mkfoot { position: sticky; bottom: 0; margin-top: 8px; padding: 10px 0; text-align: center; background: rgba(14,10,6,0.97); }
+  @media (max-width: 760px) { .makerpanel .maker { grid-template-columns: 1fr; } }
+  /* the keyboard on screen for naming the captain with a pad (ui.js showMaker) */
+  .oskb { margin: 4px 0 8px; padding: 6px; border: 1px solid rgba(232,192,90,0.35); border-radius: 6px; background: rgba(0,0,0,0.45); }
+  .oskrow { display: flex; gap: 4px; margin: 3px 0; justify-content: center; }
+  .osk { min-width: 26px; padding: 4px 0; text-align: center; white-space: nowrap; font-size: 14px; border: 1px solid rgba(232,192,90,0.35); border-radius: 5px; background: rgba(0,0,0,0.35); cursor: var(--cur-pointer, pointer); }
+  .osk.wide { min-width: 58px; padding: 4px 8px; } .osk.space { flex: 0 1 160px; } .osk.oskdone { background: var(--gold); color: #1c140a; }
+  .osk .padkey { margin: 0 0 0 4px; }
+  /* the Dry Dock's captains and its rack of ships in bottles (dock3d.js draws into .rackgl, over the cells) */
+  .dockcaps { display: flex; flex-wrap: wrap; gap: 6px; margin: 2px 0 8px; }
+  /* the pickers: the captain and her four paints in one row, each opening its choices over the rack (5 November 2026) */
+  .dockbar { position: relative; display: flex; flex-wrap: wrap; gap: 8px; margin: 2px 0 8px; }
+  .dpick { position: relative; flex: 1 1 118px; min-width: 0; display: flex; flex-direction: column; gap: 1px; padding: 4px 26px 5px 10px;
+    border: 1px solid rgba(200,160,80,0.5); border-radius: 6px; background: rgba(14,8,3,0.55); box-shadow: inset 0 2px 6px rgba(0,0,0,0.6); cursor: var(--cur-pointer, pointer); }
+  .dpick:hover, .dpick.open { border-color: var(--gold); }
+  .dpick .dpk { font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; opacity: 0.7; }
+  .dpick .dpv { display: flex; align-items: center; gap: 7px; min-width: 0; font-family: 'Pirata One', serif; font-size: 17px; color: var(--gold); white-space: nowrap; }
+  .dpick .dpv span:last-child { overflow: hidden; text-overflow: ellipsis; }
+  .dpick .chip { flex: 0 0 auto; width: 16px; height: 16px; border-radius: 3px; border: 1px solid rgba(0,0,0,0.6); box-shadow: inset 0 0 5px rgba(0,0,0,0.6); }
+  .dpick .chip.own { background: repeating-linear-gradient(45deg, #6a4a2a 0 4px, #8a6a3a 4px 8px); }
+  .dpick .chip.pet, .sw .chip.pet { border: 0; box-shadow: none; background: none; width: auto; height: auto; font-size: 16px; line-height: 1; }
+  .dpick .dcaret { position: absolute; right: 9px; top: 50%; transform: translateY(-50%); color: var(--gold); opacity: 0.8; }
+  .dpick.open .dcaret { transform: translateY(-50%) rotate(180deg); }
+  .dockpop { position: absolute; left: 0; right: 0; top: 100%; z-index: 20; margin-top: 6px; padding: 8px 10px 10px; max-height: calc(46vh / var(--ui-scale, 1)); overflow-y: auto;
+    background-color: #2a190c; background-image: linear-gradient(180deg, rgba(0,0,0,0.2), rgba(0,0,0,0.45)), var(--wood, none); background-size: auto, 512px 256px;
+    border: 1px solid var(--gold-dim); border-radius: 6px; box-shadow: 0 14px 30px rgba(0,0,0,0.75); }
+  .dockpop .pophead { display: flex; justify-content: space-between; align-items: center; margin-bottom: 7px; font-family: 'Pirata One', serif; font-size: 18px; color: var(--gold); }
+  .dockpop .dockcaps { margin: 0; }
+  /* a short screen (a phone on its side): the bottles shrink so the whole dock still fits without scrolling */
+  @media (max-height: 620px) { #dockov .sub { display: none; } .rack .bottle:not(.big) { height: max(60px, calc((100vh / var(--ui-scale, 1) - 345px) / 2)); } .dpick { flex-basis: 90px; padding-top: 2px; padding-bottom: 3px; } .dpick .dpk { display: none; } }
+  .dcap { padding: 3px 10px; border: 1px solid rgba(232,192,90,0.35); border-radius: 14px; font-size: 14px; cursor: var(--cur-pointer, pointer); background: rgba(0,0,0,0.35); white-space: nowrap; }
+  .dcap.on { background: var(--gold); color: #1c140a; border-color: var(--gold); }
+  .rack { position: relative; isolation: isolate; margin-bottom: 8px; background: linear-gradient(180deg, rgba(60,40,22,0.6), rgba(30,20,12,0.8)); border: 2px solid #5a3a22; border-radius: 8px; padding: 6px; }
+  .rack .rackgl { position: absolute; inset: 6px; width: calc(100% - 12px); height: calc(100% - 12px); pointer-events: none; z-index: 1; }
+  /* a pad's focus ring on a bottle drawn over the canvas (the canvas covered it where it crossed, so it showed only along
+     the rack's edge, the owner, 7 November 2026); the cell is see-through, so only the ring and the label come up */
+  .rack .bottle.focus { z-index: 2; }
+  .bottles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+  .bottle { position: relative; height: 132px; border-radius: 6px; border: 1px solid rgba(232,192,90,0.25); cursor: var(--cur-pointer, pointer); overflow: hidden; }
+  .bottle .lab { position: absolute; left: 6px; bottom: 4px; z-index: 2; font-size: 13px; line-height: 1.1; text-shadow: 0 1px 3px #000, 0 0 6px #000; pointer-events: none; }
+  .bottle .lab small { display: block; font-size: 11px; opacity: 0.85; }
+  .rack .racktr { display: none; position: absolute; right: 12px; top: 12px; z-index: 3; gap: 6px; }
+  .rack.inspecting .racktr { display: flex; }
+  /* full screen: the opened bottle over the whole window (the panel is zoomed by the interface size, so sizes are divided back) */
+  .rack.full { position: fixed; left: 0; top: 0; width: calc(100vw / var(--ui-scale, 1)); height: calc(100vh / var(--ui-scale, 1)); margin: 0; border: 0; border-radius: 0; z-index: 50; box-sizing: border-box; background: #120c07; }
+  .rack.full.inspecting .bottle.big { height: calc(100vh / var(--ui-scale, 1) - 12px); }
+  .rack .rackweather { display: none; position: absolute; left: 12px; right: 12px; bottom: 12px; z-index: 3; flex-wrap: wrap; gap: 5px; }
+  .rack.inspecting .rackweather { display: flex; }
+  .rack .rackway { display: none; position: absolute; left: 12px; top: 12px; z-index: 3; gap: 5px; }
+  .rack.inspecting .rackway { display: flex; }
+  .rackweather .opt, .rackway .opt { padding: 3px 9px; font-size: 13px; border: 1px solid rgba(232,192,90,0.45); border-radius: 5px; background: rgba(10,8,5,0.7); cursor: var(--cur-pointer, pointer); }
+  .rackweather .opt.on, .rackway .opt.on { background: var(--gold); color: #1c140a; }
+  .rack.inspecting .bottle.big .lab { bottom: 44px; }
+  .rack.inspecting .bottle:not(.big) { display: none; }
+  .rack.inspecting .bottles { grid-template-columns: 1fr; }
+  /* an opened bottle fills most of the window's height (it was a wide, low strip: the user, 4 October 2026) */
+  .rack.inspecting .bottle.big { height: max(240px, min(calc(64vh / var(--ui-scale, 1)), 720px)); cursor: var(--cur-grab, grab); touch-action: none; }
+  .rack.inspecting .bottle.big:active { cursor: var(--cur-grabbing, grabbing); } /* (gold hands: pointer.js) */
+  .dock:has(.rack.inspecting) { max-height: calc(78vh / var(--ui-scale, 1)); }
+  .dockprog { font-size: 14px; margin: 0 0 8px; opacity: 0.9; }
+  @media (max-width: 560px) { .bottles { grid-template-columns: repeat(2, 1fr); } .bottle { height: 110px; } }
+  .swatches { display: flex; flex-wrap: wrap; gap: 7px; }
+  .sw { display: flex; align-items: center; gap: 7px; padding: 4px 10px 4px 5px; border: 1px solid var(--gold-dim); border-radius: 6px;
+    background: rgba(0,0,0,0.45); cursor: var(--cur-pointer, pointer); font-size: 13px; }
+  .sw .chip { width: 20px; height: 20px; border-radius: 4px; border: 1px solid rgba(0,0,0,0.6); box-shadow: inset 0 0 6px rgba(0,0,0,0.6); }
+  .sw .chip.own { background: repeating-linear-gradient(45deg, #6a4a2a 0 5px, #8a6a3a 5px 10px); }
+  .sw.on { border-color: #fff; box-shadow: 0 0 12px rgba(255,255,255,0.35); }
+  .sw.locked { opacity: 0.4; cursor: var(--cur-arrow, default); }
+  .sw .need { font-size: 11px; opacity: 0.75; }
+
+  /* ---- the shipwright's board */
+  .metagrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin: 10px 0; text-align: left; max-height: calc(64vh / var(--ui-scale, 1)); overflow-y: auto; }
+  .meta { display: flex; align-items: center; gap: 10px; background: linear-gradient(180deg, rgba(40,30,18,0.98), rgba(18,12,8,0.98)); border: 2px solid var(--gold-dim); border-radius: 8px; padding: 8px 10px; }
+  .meta .icon { font-size: 24px; }
+  .meta .body { flex: 1 1 auto; min-width: 0; }
+  .meta .name { font-family: 'Pirata One', serif; font-size: 17px; color: var(--gold); line-height: 1.1; }
+  .meta .blurb { font-size: 12px; opacity: 0.82; }
+  .meta .pips { letter-spacing: 2px; font-size: 13px; color: var(--gold); }
+  .meta .pips i { opacity: 0.3; font-style: normal; }
+  /* without the full game (data/demo.js DEMO_CAPS): points, tiers and articles past the demo's caps */
+  .meta .pips i.full { opacity: 0.18; color: #9aa4ae; }
+  .meta .fullgame { font-size: 13px; white-space: nowrap; color: #e8c05a; }
+  .meta .pips .fullnote { font-family: inherit; letter-spacing: 0; font-size: 11px; color: #e8c05a; opacity: 0.9; }
+  .demopurse { color: #e8c05a; }
+  .meta .buy { font-size: 14px; white-space: nowrap; }
+  .meta .refund { font-size: 14px; padding: 4px 9px; margin-right: 4px; white-space: nowrap; }
+  .meta.curse { border-color: #7a3030; }
+  .meta.curse.on { box-shadow: 0 0 10px rgba(200,60,50,0.35); }
+  /* a curse spans the board: its tier chips (Off, I-V) and its ladder of what each tier adds and pays */
+  .meta.cursewide { grid-column: 1 / -1; flex-direction: column; align-items: stretch; gap: 6px; }
+  .cursetop { display: flex; align-items: center; gap: 10px; }
+  .cursebar { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  .cursenow { font-size: 13px; color: #ff9a80; }
+  /* the six chips share one row at any width (a phone's included) */
+  .curse .tiers { display: flex; gap: 6px; }
+  .curse .tierchip { flex: 1 1 0; min-width: 0; max-width: 88px; text-align: center; padding: 6px 0; font-size: 14px; }
+  .curse .tierchip.on { border-color: #ff6a50; color: #fff; box-shadow: 0 0 10px rgba(255,90,60,0.55); }
+  /* a tier not yet bought: the next one buys (its price under it), the later ones are locked in order */
+  .curse .tierchip small { display: block; font-size: 10px; line-height: 1.1; white-space: nowrap; }
+  .curse .tierchip.buytier { border-style: dashed; } .curse .tierchip.buytier.poor { opacity: 0.5; }
+  .curse .tierchip.locked { opacity: 0.4; cursor: var(--cur-arrow, default); filter: grayscale(0.6); }
+  .curse .tierchip.fullgame { cursor: var(--cur-pointer, pointer); } .curse .tierchip.fullgame small { white-space: normal; }
+  .curse .ladder { list-style: none; margin: 0; padding: 0; font-size: 12px; line-height: 1.35; }
+  .curse .ladder li { opacity: 0.5; padding: 2px 0 2px 8px; border-left: 2px solid transparent; }
+  .curse .ladder li.lit { opacity: 1; border-left-color: #a8322a; }
+  .curse .ladder li.here { border-left-color: #ff6a50; }
+  .curse .ladder b { font-family: 'Pirata One', serif; font-weight: normal; font-size: 14px; color: var(--gold); margin-right: 3px; }
+  .curse .ladder .pays { color: #e8c86a; }
+  .meta.maxed { opacity: 0.75; } .meta.poor .buy { opacity: 0.45; }
+  /* an article held: its free On/Off switch, and the line it shows while off; a refund's demo warning */
+  .meta.article.maxed { opacity: 1; } .meta.article.off { opacity: 0.7; }
+  .meta .artswitch { min-width: 44px; text-align: center; } .meta .artswitch.on { border-color: #4aff8a; box-shadow: 0 0 8px rgba(74,255,138,0.35); }
+  .meta .artoff { font-size: 12px; color: #ff9a80; } .meta .artnote { font-size: 12px; color: #e8c05a; }
+  /* on a phone an article's buttons take their own row under its words, so the words keep the width */
+  @media (max-width: 560px) { .meta.article { flex-wrap: wrap; } .meta.article .body { flex: 1 1 calc(100% - 50px); } .meta.article .body ~ .btn:first-of-type, .meta.article .body + .signed { margin-left: auto; } }
+  .meta.article { border-color: rgba(200,170,255,0.5); background: linear-gradient(180deg, rgba(34,28,44,0.98), rgba(16,12,22,0.98)); }
+  .meta.article.heirloom { border-color: rgba(255,206,110,0.6); background: linear-gradient(180deg, rgba(44,34,16,0.98), rgba(20,14,6,0.98)); }
+  .meta .heirkind { font-family: 'IM Fell English', Georgia, serif; font-size: 12px; opacity: 0.7; margin-left: 6px; }
+  .wslot.heir { box-shadow: inset 0 0 0 1px rgba(255,206,110,0.8); }
+  .metahead { grid-column: 1 / -1; font-family: 'Pirata One', serif; font-size: 19px; color: var(--gold); margin: 10px 0 0; text-align: left; }
+  .metasub { font-family: 'IM Fell English', Georgia, serif; font-size: 12px; opacity: 0.7; margin-left: 8px; }
+  /* Something already bought is not a button: it should not look pressable. */
+  .signed { font-size: 13px; color: #9fd9a6; opacity: 0.85; white-space: nowrap; letter-spacing: 0.04em; }
+  @media (max-width: 720px) { .metagrid { grid-template-columns: minmax(0, 1fr); } } /* minmax: no wide card can widen the column past the screen */
+
+  /* Same rule everywhere else: on a short screen the long middle scrolls and the buttons stay in view. */
+  @media (max-height: 620px) {
+    #endov .stats, #endov .unlocks, #endov .demopitch, #fullov .demopitch { max-height: 42vh; overflow-y: auto; }
+    #endov h1 { font-size: 34px; } #endov p, #fullov .sub { font-size: 14px; }
+    /* A chest is one to three cards and should never need scrolling to see them: the panel becomes a column
+       and the cards take whatever height is left, instead of being pinned to a fraction of the window. */
+    #chestov .panel { display: flex; flex-direction: column; overflow: hidden; }
+    #chestov .panel > * { flex: 0 0 auto; }
+    #chestov .panel > .btn { align-self: center; }
+    #chestov .cards { flex: 0 1 auto; min-height: 0; max-height: none; overflow-y: auto; }
+    #chestov .card { min-height: 0; }
+    /* trim the chrome around the cards so one card never needs a scrollbar to be read in full */
+    #chestov h2 { font-size: 22px; margin-bottom: 2px; }
+    #chestov .goldline { font-size: 18px; margin-top: 2px; }
+    #chestov .cards { margin-top: 4px; gap: 10px; }
+    #chestov .btn { margin-top: 8px; }
+  }
+  /* Short but wide windows put the settings rows two-across rather than scrolling, when each half still has room for a
+     row of choice buttons (a landscape phone does not: its rows go one-across and the panel scrolls). */
+  @media (max-height: 620px) and (min-width: 1150px) {
+    #settingsrows { display: grid; grid-template-columns: 1fr 1fr; gap: 0 20px; align-content: start; }
+    #settings .setrow { margin: 2px 0; }
+  }
+  @media (max-height: 620px) {
+    #settings #settingsrows { overflow-y: auto; }
+  }
+  .cap { background: linear-gradient(180deg, rgba(40,30,18,0.98), rgba(18,12,8,0.98)); border: 2px solid var(--gold-dim); border-radius: 8px; padding: 8px 8px 9px; cursor: var(--cur-pointer, pointer); text-align: center; min-height: 104px; position: relative; }
+  .cap .icon { font-size: 28px; line-height: 1.1; }
+  .cap .name { font-family: 'Pirata One', serif; font-size: 16px; color: var(--gold); line-height: 1.05; }
+  .cap .role { font-size: 11px; opacity: 0.8; }
+  .cap.locked { border-color: #444; filter: grayscale(0.85); opacity: 0.75; }
+  .cap.locked .name { color: #aaa; }
+  .cap.sel { border-color: #fff; box-shadow: 0 0 16px rgba(255,255,255,0.4); }
+  #capinfo { margin-top: 12px; min-height: 96px; text-align: left; background: rgba(0,0,0,0.35); border: 1px solid rgba(232,192,90,0.25); border-radius: 8px; padding: 10px 14px; font-size: 14px; line-height: 1.4; }
+  #capinfo b { color: var(--gold); font-weight: normal; font-family: 'Pirata One', serif; font-size: 19px; }
+  #capinfo .line { color: #9fd0ff; }
+  .seas { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; margin-top: 10px; }
+  .sea { width: 190px; border: 2px solid var(--gold-dim); border-radius: 8px; padding: 0 0 10px; cursor: var(--cur-pointer, pointer); overflow: hidden; background: rgba(0,0,0,0.4); }
+  .sea .swatch { height: 64px; }
+  .sea .name { font-family: 'Pirata One', serif; font-size: 20px; color: var(--gold); margin-top: 6px; }
+  .sea .sub2 { font-size: 12px; opacity: 0.85; padding: 0 8px; min-height: 30px; }
+  .sea .state { font-size: 12px; color: #9fd0ff; }
+  .sea.locked { filter: grayscale(0.9); opacity: 0.6; }
+  .purse { position: absolute; top: 14px; right: 18px; font-family: 'Pirata One', serif; font-size: 22px; color: var(--gold); }
+  /* On a port screen the purse sits in the tab row itself, at its right-hand end (ui.js moves it there), rather than on a
+     row of its own above the tabs. An equal share of the spare width either side keeps the tabs centred, purse or no
+     purse, so they never shift sideways from one screen to the next; they wrap only when the row is truly full. */
+  .porttabs::before, .porttabs::after { content: ''; flex: 1 1 0; }
+  .porttabs:has(.purse)::after { display: none; }
+  .porttabs::after { margin-left: 10px; } /* (the purse's margin: without one, as on Settings, the flags sat 5 px off, the owner) */
+  .porttabs .purse { position: static; flex: 1 1 0; text-align: right; margin: 0 0 0 10px; white-space: nowrap; font-size: 21px; }
+  /* ---- the port fits the window. The panel is a column: heading at the top, buttons at the bottom, and the one
+     long region in the middle takes whatever height is left. The panel itself never scrolls, so no screen can push
+     its tabs or its buttons out of reach the way the captain roster used to. */
+  .panel:has(.porttabs) { display: flex; flex-direction: column; overflow-x: hidden; overflow-y: auto; }
+  /* every port screen as wide as the widest (its max-width), so changing tabs never resizes the board (7 November 2026, the
+     owner: the Dry Dock, the Log and the Charts were narrower, "jarring") */
+  .panel:has(.porttabs) { width: 100%; height: 100vh; } /* (and as tall: its max-height. The Dry Dock was shorter, the owner) */
+  .panel:has(.porttabs) > * { flex: 0 0 auto; }
+  .panel:has(.porttabs) > .btn, .panel:has(.porttabs) > .navhint { align-self: center; }
+  .panel:has(.porttabs) > .capcols, .panel:has(.porttabs) > .metagrid, .panel:has(.porttabs) > .dock,
+  .panel:has(.porttabs) > .logcols, .panel:has(.porttabs) > #settingsrows { flex: 1 1 auto; min-height: min(160px, 40vh); max-height: none; }
+  /* the settings rows only had a scrollbar on short screens, so on a tall one they simply ran off the panel */
+  .panel:has(.porttabs) > #settingsrows { overflow-y: auto; }
+  /* room for the focus ring (outline-offset 3px) inside the scrolling rows, or it is cut off at the edges */
+  #settingsrows { padding: 10px 12px; }
+  /* The same room inside the captain grid (.capscroll, above) and the Dry Dock: a card or bottle in the first column
+     sat against the box's edge, so its ring and the selected card's glow were cut off on the left (the owner, 25 October
+     2026, on the PC with a controller). */
+  .dock { padding: 8px; }
+  /* A wide window lays the settings two-across, as a short one does: one narrow column of thirteen rows overflowed even a
+     1920 x 1080 screen and the last rows had to be scrolled to (the owner, 25 October 2026). The panel widens to hold them. */
+  @media (min-width: 1150px) and (min-height: 621px) {
+    #settings .panel { width: min(1080px, 94vw); }
+    #settingsrows { display: grid; grid-template-columns: 1fr 1fr; gap: 0 20px; align-content: start; }
+    #settings .setrow { margin: 2px 0; min-width: 0; }
+  }
+  /* the inner lists used to be capped in vh, which is what made the total overshoot the panel; they fill now */
+  /* The log's two columns share whatever height is left over and each scrolls on its own. The vh caps they used to
+     carry are exactly what made the total overshoot the panel, and a flex item will not shrink below its own
+     content unless it is told it may. */
+  .panel:has(.porttabs) .logstats, .panel:has(.porttabs) .featlist { max-height: none; }
+  .logstats { flex: 1 1 auto; min-height: 0; }
+  .logfeats { min-height: 0; }
+  .featlist { flex: 1 1 auto; min-height: 0; }
+  .dock, .metagrid { min-height: 0; }
+  .capside { min-height: 0; }
+  #capinfo { overflow-y: auto; min-height: 0; }
+  .porttabs { align-items: center; }
+  /* Short windows (a phone held sideways, or a large interface size): each port screen is one page that scrolls as a
+     whole, with the tab row held at the top, instead of a fixed frame with small scrolling boxes inside it, which at a
+     large size squeezed those boxes to nothing and pushed the buttons out of reach (the user, 3 October 2026). */
+  @media (max-height: 620px) {
+    .panel:has(.porttabs) { display: block; }
+    .panel:has(.porttabs) .capcols, .panel:has(.porttabs) .capscroll, .panel:has(.porttabs) .capside, .panel:has(.porttabs) #capinfo,
+    .panel:has(.porttabs) .metagrid, .panel:has(.porttabs) .dock, .panel:has(.porttabs) .logcols, .panel:has(.porttabs) .logstats,
+    .panel:has(.porttabs) .featlist, #settings #settingsrows { max-height: none; min-height: 0; overflow: visible; }
+    .panel:has(.porttabs) > .btn { display: block; margin-left: auto; margin-right: auto; }
+    .panel:has(.porttabs) .porttabs { position: sticky; top: -22px; z-index: 5; padding-top: 6px; padding-bottom: 6px; background: rgba(22,16,10,0.97); }
+    .porttabs .purse { font-size: 18px; }
+  }
+  /* A landscape phone, the captains: the tab row says "Crew" already, so the heading goes; the roster goes five across
+     with smaller tiles, so twenty-two captains take five short rows rather than six tall ones; and the captain's papers
+     and the Choose a Sea and Back buttons ride beside the roster as it scrolls, never below it (the owner, 14 October
+     2026: "lots of scrolls in order to choose the captain"). Only the papers scroll inside, when a captain's are long. */
+  @media (max-height: 620px) {
+    .caps > h2 { display: none; }
+    .caps .grid { grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 5px; margin-top: 2px; }
+    .caps .cap { min-height: 0; padding: 3px 4px 4px; border-width: 1px; }
+    .caps .cap .icon { font-size: 17px; line-height: 1; }
+    .caps .cap .name { font-size: 13px; }
+    .caps .cap .role { font-size: 10px; line-height: 1.1; }
+    .panel:has(.porttabs) .capcols { align-items: flex-start; }
+    .panel:has(.porttabs) .capside { position: sticky; top: 30px; align-self: flex-start; justify-content: flex-start;
+      max-height: calc(100vh / var(--ui-scale, 1) - 100px); }
+    .panel:has(.porttabs) #capinfo { flex: 0 1 auto; min-height: 0; overflow-y: auto; margin-top: 0; padding: 7px 10px; font-size: 13px; line-height: 1.3; }
+    .caps .capbtns { flex: 0 0 auto; gap: 6px; }
+  }
+  /* A landscape phone, the seas: seven smaller cards in two rows, and Back held at the foot of the panel. */
+  @media (max-height: 620px) {
+    #seasov .panel h2 { font-size: 26px; margin-bottom: 0; }
+    #seasov .panel .sub { margin: 2px 0 0; font-size: 13px; }
+    #seasov .seas { gap: 8px; margin-top: 6px; }
+    #seasov .sea { width: 160px; padding-bottom: 6px; }
+    #seasov .sea .swatch { height: 34px; }
+    #seasov .sea .name { font-size: 17px; margin-top: 3px; }
+    #seasov .sea .sub2 { font-size: 11px; min-height: 0; line-height: 1.2; }
+    #seaback { position: sticky; bottom: -14px; margin-top: 8px; }
+  }
+
+  /* Scrollbars: the browser default is a grey plastic slab in the middle of a wooden ship. */
+  .panel, .panel *, .capscroll, .metagrid, .logstats, .featlist, .dock, .charts, #settingsrows {
+    scrollbar-width: thin; scrollbar-color: rgba(232,192,90,0.45) rgba(0,0,0,0.25);
+  }
+  .panel ::-webkit-scrollbar, .panel::-webkit-scrollbar { width: 9px; height: 9px; }
+  .panel ::-webkit-scrollbar-track, .panel::-webkit-scrollbar-track { background: rgba(0,0,0,0.3); border-radius: 5px; }
+  .panel ::-webkit-scrollbar-thumb, .panel::-webkit-scrollbar-thumb {
+    background: linear-gradient(180deg, rgba(232,192,90,0.55), rgba(168,132,58,0.55)); border-radius: 5px; border: 1px solid rgba(0,0,0,0.35);
+  }
+  .panel ::-webkit-scrollbar-thumb:hover, .panel::-webkit-scrollbar-thumb:hover { background: linear-gradient(180deg, rgba(232,192,90,0.85), rgba(168,132,58,0.85)); }
+  .panel ::-webkit-scrollbar-corner { background: transparent; }
+  .stats { display: grid; grid-template-columns: repeat(2, minmax(150px, 1fr)); gap: 3px 26px; text-align: left; font-size: 14px; margin-top: 8px; }
+  .stats div span { float: right; color: var(--gold); }
+  /* The pause menu: wide rather than tall, so it never needs a scrollbar on a landscape phone (the user, 1 October
+     2026): the stats four across, the ring key in as many columns as fit. */
+  #pause .panel { width: min(980px, 94vw); max-width: 94vw; }
+  #pause .stats { grid-template-columns: repeat(4, minmax(120px, 1fr)); gap: 2px 22px; }
+  #pause .affixkey { grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); }
+  #pause .pausetabs { display: flex; justify-content: center; gap: 7px; margin: 2px 0 10px; }
+  #pause .pausesec { display: none; min-height: 150px; }
+  #pause .pausesec.on { display: grid; align-content: start; }
+  #pause .pausesec[data-sec="ship"].on { display: block; }
+  #pause .voyline { margin-top: 10px; font-size: 14px; opacity: 0.85; text-align: center; }
+  #pause .affixkey .row { font-size: 14px; }
+  #pause #cardkey .cardkey { justify-content: center; gap: 6px 8px; }
+  #pause #cardkey .ck { font-size: 14px; padding: 2px 10px; }
+  #pause #cardkey .note { grid-column: 1 / -1; text-align: center; font-size: 13px; opacity: 0.8; margin-top: 10px; }
+  #endsummary .endline { font-size: 18px; color: var(--gold); font-family: 'Pirata One', serif; letter-spacing: 0.02em; }
+  #endsummary .endgold { margin-top: 4px; }
+  #endsummary .endtip { margin-top: 2px; font-size: 14px; opacity: 0.8; }
+  @media (max-height: 620px) {
+    #pause .panel { padding: 10px 18px; }
+    #pause h2 { font-size: 24px; margin: 0 0 2px; }
+    #pause .stats { font-size: 13px; gap: 0 18px; margin-top: 2px; }
+    #pause .affixkey { margin: 4px 0 2px; gap: 2px 12px; font-size: 11.5px; }
+    #pause .affixkey .hdr { font-size: 14px; margin-top: 0; }
+    #pause .btn { margin-top: 6px; padding-top: 6px; padding-bottom: 6px; }
+  }
+  .vols { display: flex; gap: 22px; justify-content: center; margin-top: 12px; font-size: 15px; } .vols input { vertical-align: middle; width: 130px; accent-color: #e8c05a; }
+  .desktop-only { display: none; } body.desktop .desktop-only { display: inline-block; }
+  .unlocks { margin-top: 10px; font-size: 16px; color: #9fffb0; }
+  .controls { font-size: 14px; opacity: 0.9; margin-top: 8px; line-height: 1.5; }
+  .controls b { color: var(--gold); }
+
+  #loading { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; flex-direction: column; background: #050a10; pointer-events: auto; }
+  /* the sound mix (ui.js showSoundMix): groups first, then every sound under its group, each row a slider and a play button */
+  #soundov .panel { width: min(760px, 94vw); display: flex; flex-direction: column; max-height: calc(100vh / var(--ui-scale, 1) - 40px); }
+  .mixlede { margin: 0 0 8px; font-size: 15px; opacity: 0.85; text-align: center; }
+  #mixrows { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: 10px 12px; }
+  #mixrows h3 { margin: 16px 4px 4px; font-size: 18px; color: var(--gold); font-family: 'Pirata One', serif; font-weight: normal; }
+  #mixrows .mixrow { display: grid; grid-template-columns: minmax(0, 1fr) minmax(120px, 220px) 70px 86px; align-items: center; gap: 10px; margin: 4px 0; padding: 6px 10px; min-width: 0; }
+  .mixrow.group { font-weight: bold; }
+  #mixrows .mixrow > span:first-child { text-align: left; min-width: 0; }
+  #mixrows .mixslider input { width: 100%; accent-color: #e8c05a; margin: 0; display: block; }
+  /* the tick under a slider where the game puts that sound (--at, set by ui.js showSoundMix; 8px is half the thumb) */
+  .mixslider { position: relative; display: block; min-width: 0; padding-bottom: 7px; }
+  .mixslider::after { content: ''; position: absolute; left: calc(8px + (100% - 16px) * var(--at)); bottom: 0; width: 2px; height: 6px; margin-left: -1px; background: #e8c05a; opacity: 0.8; pointer-events: none; }
+  .mixrow .db { font-size: 13px; text-align: right; font-variant-numeric: tabular-nums; opacity: 0.85; }
+  .mixrow .play { padding: 2px 10px; margin: 0; font-size: 14px; }
+  .mixbtnpair { display: flex; gap: 6px; }
+  .mixnote { margin: 2px 6px 6px; font-size: 14px; opacity: 0.8; }
+  .mixbtns { display: flex; justify-content: center; gap: 10px; flex-wrap: wrap; }
+  @media (max-width: 560px) { #mixrows .mixrow { grid-template-columns: minmax(0, 1fr) 62px 86px; } #mixrows .mixrow .mixslider { grid-column: 1 / -1; grid-row: 2; } }
+  /* the loading screen as a cover from the menus into a voyage (main.js coverVoyage): it fades in and out instead of cutting */
+  #loading.voyage { opacity: 0; transition: opacity 0.3s ease; }
+  #loading.lifting { opacity: 0; transition: opacity 0.4s ease; pointer-events: none; } /* onto the title, drawn whole behind it (ui.liftLoading) */
+  #loading.voyage.shown { opacity: 1; }
+  #loading .title { font-size: clamp(34px, 7vw, 72px); text-align: center; color: var(--gold); text-shadow: 0 0 30px rgba(232,192,90,0.5); }
+  #loadbar { width: 320px; height: 8px; background: #1a2530; border: 1px solid var(--gold-dim); margin-top: 20px; }
+  #loadfill { height: 100%; width: 0%; background: var(--gold); }
+  .setrow { display: flex; justify-content: space-between; align-items: center; gap: 28px; min-width: min(460px, 78vw); margin: 6px auto; padding: 9px 14px; font-size: 18px; border: 1px solid rgba(232,192,90,0.25); border-radius: 6px; background: rgba(0,0,0,0.35); cursor: var(--cur-pointer, pointer); pointer-events: auto; }
+  .setrow.focus, .setrow:hover { border-color: var(--gold); box-shadow: 0 0 10px rgba(232,192,90,0.35); }
+  .setrow input { width: 190px; accent-color: #e8c05a; }
+  /* A setting's choices, every one a button with the current one lit (they read "< value >" until 3 October 2026,
+     which looked like a carousel to swipe). A long row wraps its buttons under the label rather than overflowing. */
+  .setrow { flex-wrap: wrap; row-gap: 6px; }
+  .setrow .opts { display: flex; flex-wrap: wrap; gap: 6px; justify-content: flex-end; margin-left: auto; }
+  .setrow .opt { padding: 4px 11px; font-size: 15px; border: 1px solid rgba(232,192,90,0.35); border-radius: 5px; background: rgba(0,0,0,0.35); color: var(--parch); opacity: 0.7; white-space: nowrap; cursor: var(--cur-pointer, pointer); }
+  .setrow .opt:hover { opacity: 1; border-color: var(--gold); }
+  .setrow .opt.on { opacity: 1; background: var(--gold); border-color: var(--gold); color: #1c140a; }
+  .navhint { margin-top: 10px; font-size: 13px; opacity: 0.6; } body[data-device=touch] .navhint, body[data-device=mouse] .navhint { display: none; }
+  /* UI scale (Settings): HUD and panels only; floating damage numbers are positioned in screen pixels */
+  .hudgroup, .overlay .panel { zoom: var(--ui-scale, 1); }
+  /* vignette, hurt pulse and lightning flash are drawn in WebGL (src/finalpass.js): full-screen HTML layers are costly */
+  #vignette, #hurt, #flash { display: none; }
+  /* The ghost sea's crossing (bosses.js GS, ui.setDrown): the sea rising over the screen and draining away, drawn on a
+     canvas by the game's clock: over the play area and under the HUD. */
+  #drown { position: fixed; inset: 0; pointer-events: none; overflow: hidden; display: none; z-index: 0; } /* (z 0, early in #ui: the HUD after it stays on top) */
+  #drowncv { position: absolute; inset: 0; width: 100%; height: 100%; }
+  /* the sea of the dead (bosses.js GS): its edges closing in, dark with a pale cold rim of mist (ui.setGhostVeil) */
+  #ghostveil { position: fixed; inset: 0; pointer-events: none; display: none; z-index: 0; background: radial-gradient(ellipse 75% 70% at 50% 50%, rgba(0,0,0,0) 52%, rgba(150,200,200,0.07) 70%, rgba(6,14,18,0.55) 88%, rgba(2,6,8,0.85) 100%); }
+  /* A small toast under the timer, not a headline across the sea (the user, 3 October 2026: warnings "way too big and
+     completely covered the mobile screen"). It wraps inside its strip and never takes clicks.
+     10 October 2026, the owner again: on a phone the first doom's banner still covered the ring it was telling him to
+     leave. So every toast is a compact strip pinned under the timer, the same size for every message (a doom is told
+     apart by its red, the slow motion, the red edge pulse and the bell, not by size), placed by the HUD's own scale so
+     it sits just under the timer and kills line, and on a phone held upright below the compass and loadout: in every
+     shape it stays in the top quarter, well clear of the ship in the middle. Never smaller than 13 px for the title and
+     11 px for its line, on a dark backing for contrast. */
+  #announce { position: absolute; top: calc(var(--ui-scale, 1) * 76px); left: 50%; transform: translateX(-50%); width: max-content; max-width: min(460px, 50vw);
+    padding: 3px 12px 4px; border-radius: 9px; background: rgba(6, 12, 20, 0.72); border: 1px solid rgba(232, 192, 90, 0.28);
+    font-family: 'Pirata One', serif; font-size: 18px; line-height: 1.15; color: var(--gold);
+    text-shadow: 0 1px 3px #000; opacity: 0; transition: opacity 0.35s; text-align: center; white-space: normal; pointer-events: none; }
+  #announce small { display: block; font-family: Georgia, serif; font-size: 13px; line-height: 1.25; color: var(--parch); margin-top: 1px; }
+  /* the first doom of its kind (ui.doomWarn): red, the same size; its other cues carry the alarm */
+  #announce.doom { color: #ff7a5a; background: rgba(40, 6, 4, 0.82); border-color: rgba(255, 96, 64, 0.7); }
+  /* a phone on its side (about 844 x 390): the strip is narrower and smaller, between the hull bar and the compass */
+  @media (max-height: 500px) {
+    #announce { max-width: min(500px, 58vw); font-size: 14px; padding: 2px 10px 3px; border-radius: 7px; }
+    #announce small { font-size: 11px; line-height: 1.2; }
+  }
+  /* a phone held upright (about 390 x 844): under the compass and loadout, across most of the width */
+  @media (max-aspect-ratio: 4/5) {
+    /* an upright phone is too narrow for a 42vw hull bar beside the centred clock: its "95 / 95" ran under the timer */
+    #hpwrap { width: min(300px, 28vw); }
+    #announce { top: calc(var(--ui-scale, 1) * 200px); max-width: 88vw; font-size: 15px; }
+    #announce small { font-size: 12px; }
+  }
+  /* words that float up from the ship (a weapon gained, "glancing"): smaller on a small screen, so they never hide her */
+  @media (max-height: 500px), (max-width: 600px) {
+    .dmg.label { font-size: 14px; }
+  }
+  #stick-base, #stick-knob { position: absolute; top: 0; left: 0; display: none; border-radius: 50%; pointer-events: none; }
+  #stick-base { width: 128px; height: 128px; border: 2px solid rgba(255,255,255,0.35); background: rgba(255,255,255,0.06); }
+  #stick-knob { width: 56px; height: 56px; background: rgba(232,192,90,0.55); border: 2px solid rgba(255,255,255,0.6); }
+  #pausebtn { position: absolute; bottom: 14px; right: 14px; width: 46px; height: 46px; border-radius: 50%; border: 1px solid var(--gold-dim); background: rgba(0,0,0,0.5); color: var(--gold); font-size: 20px; line-height: 44px; text-align: center; pointer-events: auto; cursor: var(--cur-pointer, pointer); display: none; }
+  .ingame #pausebtn { display: block; }
+  .hudgroup { display: none; } .ingame .hudgroup { display: block; }
+
+/* demo edition (body.demo is set when entitlements say this copy is not the full game) */
+.demo-only { display: none !important; } body.demo .demo-only { display: revert !important; } body.demo .btn.demo-only { display: inline-block !important; }
+.demotag { margin-left: 10px; padding: 1px 9px; border: 1px solid #e8c05a; border-radius: 4px; color: #e8c05a; font-style: normal; font-size: 0.7em; letter-spacing: 0.18em; vertical-align: middle; }
+.demopitch { margin: 10px auto 12px; max-width: 560px; text-align: left; padding: 10px 16px; border: 1px solid rgba(232,192,90,0.45); border-radius: 8px; background: rgba(232,192,90,0.06); line-height: 1.5; }
+.demopitch b { color: #e8c05a; } .demopitch div::before { content: '\2693\00a0\00a0'; opacity: 0.8; }
+.cap.fullgame, .sea.fullgame { opacity: 0.5; } .cap.fullgame .role, .sea.fullgame .state { color: #e8c05a; }
+
+  /* Which control help to show: the controls in use right now (body[data-device], device/profile.js), so a controller
+     picked up on the title screen swaps the text at once. */
+  .touch-only, .pad-only { display: none; }
+  body[data-device=touch] .touch-only { display: revert; } body[data-device=touch] .no-touch { display: none; }
+  body[data-device=gamepad] .pad-only { display: revert; } body[data-device=gamepad] .no-touch { display: none; }
+  #tut .tut-keys { font-size: 12px; opacity: 0.6; margin-left: auto; margin-right: 10px; }
+  /* a phone build never talks about a keyboard, whatever the pointer says */
+  body.mobile .no-touch { display: none; } body.mobile .touch-only { display: revert; }
+  body.mobile .desktop-only { display: none !important; }
+
+  /* Wider than 16:9 (an ultrawide, 12 October 2026): the HUD keeps to a centred 16:9 area, so the hull bar and the
+     compass are not out in the far corners; the sea is still drawn across the whole screen, and the menus were already
+     centred. Not on a phone or tablet (most phones are wider than 16:9 and keep their layout). Settings "HUD on wide screens: Screen edges" (body.hud-edges) puts it back at the edges. Lengths only (no
+     percentages), divided by the interface size, because the HUD group is zoomed by it. */
+  body:not(.touch):not(.mobile) #ui.ingame .hudgroup { position: absolute; top: 0; height: calc(100vh / var(--ui-scale, 1));
+    width: calc(min(100vw, 177.78vh) / var(--ui-scale, 1)); left: calc((100vw - min(100vw, 177.78vh)) / 2 / var(--ui-scale, 1)); }
+  body:not(.touch):not(.mobile) #pausebtn { right: calc((100vw - min(100vw, 177.78vh)) / 2 + 14px); }
+  body.hud-edges:not(.touch) #ui.ingame .hudgroup { width: calc(100vw / var(--ui-scale, 1)); left: 0; }
+  body.hud-edges:not(.touch) #pausebtn { right: 14px; }
+  /* Safe area (12 October 2026, for iPhones and iPads with a notch, a camera island or a home bar). The sea is drawn
+     under them (viewport-fit=cover), but on a phone or tablet the HUD keeps to the safe area: the same rule as the 16:9
+     area above (lengths divided by the interface size, because the HUD group is zoomed by it), with the insets taken
+     off. The pause button, the boss bar, the prompt and the toasts move in by the same amounts, and the menus pad
+     their edges by them. Where the insets are 0 (a computer, most Android phones) every length is what it was. */
+  body.touch #ui.ingame .hudgroup, body.mobile #ui.ingame .hudgroup { position: absolute; top: calc(var(--sa-t) / var(--ui-scale, 1)); left: calc(var(--sa-l) / var(--ui-scale, 1));
+    width: calc((100vw - var(--sa-l) - var(--sa-r)) / var(--ui-scale, 1)); height: calc((100vh - var(--sa-t) - var(--sa-b)) / var(--ui-scale, 1)); }
+  body.touch #pausebtn, body.mobile #pausebtn { right: calc(14px + var(--sa-r)); bottom: calc(14px + var(--sa-b)); }
+  #bosswrap { bottom: calc(18px + var(--sa-b)); }
+  #prompt { bottom: calc(92px + var(--sa-b)); }
+  #announce { top: calc(var(--ui-scale, 1) * 76px + var(--sa-t)); }
+  .overlay { padding: max(12px, var(--sa-t)) max(12px, var(--sa-r)) max(12px, var(--sa-b)) max(12px, var(--sa-l)); }
+  .panel { max-width: min(1080px, calc((94vw - var(--sa-l) - var(--sa-r)) / var(--ui-scale, 1))); max-height: calc((100vh - 24px - var(--sa-t) - var(--sa-b)) / var(--ui-scale, 1)); }
+  #pause .panel { width: min(980px, calc(94vw - var(--sa-l) - var(--sa-r))); max-width: calc(94vw - var(--sa-l) - var(--sa-r)); }
+  .rack.full .racktr { right: calc(12px + var(--sa-r) / var(--ui-scale, 1)); top: calc(12px + var(--sa-t) / var(--ui-scale, 1)); }
+  .rack.full .rackway { left: calc(12px + var(--sa-l) / var(--ui-scale, 1)); top: calc(12px + var(--sa-t) / var(--ui-scale, 1)); }
+  .rack.full .rackweather { left: calc(12px + var(--sa-l) / var(--ui-scale, 1)); right: calc(12px + var(--sa-r) / var(--ui-scale, 1)); bottom: calc(12px + var(--sa-b) / var(--ui-scale, 1)); }
+  @media (max-aspect-ratio: 4/5) { #announce { top: calc(var(--ui-scale, 1) * 200px + var(--sa-t)); } }
+  /* Taller than 1080 px (a 4K screen at 100 % scaling): the interface grows with the window (device/layout.js --big),
+     and the pieces of the HUD that are not zoomed with it (they are placed in screen pixels) grow by the same factor. */
+  @media (min-height: 1081px) {
+    #announce { font-size: calc(18px * var(--big, 1)); max-width: min(calc(460px * var(--big, 1)), 50vw); }
+    #announce small { font-size: calc(13px * var(--big, 1)); }
+    #bosswrap { width: min(calc(420px * var(--big, 1)), 60vw); bottom: calc(18px * var(--big, 1)); }
+    #bossname { font-size: calc(16px * var(--big, 1)); } #bossbar-bg { height: calc(7px * var(--big, 1)); }
+    #mawclock { font-size: calc(20px * var(--big, 1)); } #mawclock b { font-size: calc(27px * var(--big, 1)); } #mawbar-bg { height: calc(5px * var(--big, 1)); }
+    #prompt { width: min(calc(360px * var(--big, 1)), 70vw); font-size: calc(17px * var(--big, 1)); bottom: calc(92px * var(--big, 1)); }
+    #bosstag, #bosstag.off, #findtag, #eventtag { font-size: calc(13px * var(--big, 1)); }
+    .dmg { font-size: calc(17px * var(--big, 1)); } .dmg.label { font-size: calc(20px * var(--big, 1)); } .dmg.crit { font-size: calc(23px * var(--big, 1)); }
+    .dmg.burn { font-size: calc(14px * var(--big, 1)); } .dmg.player { font-size: calc(22px * var(--big, 1)); }
+    #pausebtn { width: calc(46px * var(--big, 1)); height: calc(46px * var(--big, 1)); line-height: calc(44px * var(--big, 1)); font-size: calc(20px * var(--big, 1)); }
+    #tut .tut-note { width: min(calc(340px * var(--big, 1)), 86vw); font-size: calc(15px * var(--big, 1)); }
+    #tut .tut-title { font-size: calc(22px * var(--big, 1)); }
+  }
+  /* Small print never under 9 px as drawn (28 October 2026). On a phone the panels are scaled to about 0.72-0.83 to fit a
+     screen some 390 px tall (device/layout.js), which drew these at 7.2-8.7 px. Each keeps its own size unless the scale
+     would take it under 9.3 px (checked: every menu at eleven sizes, scratchpad maker-test/menus.cjs). */
+  :root { --floor9: calc(9.3px / var(--ui-scale, 1)); }
+  .cap .role { font-size: max(11px, var(--floor9)); } .caps .cap .role { font-size: max(10px, var(--floor9)); }
+  #seasov .sea .sub2 { font-size: max(11px, var(--floor9)); } .sea .state { font-size: max(12px, var(--floor9)); }
+  .meta .blurb, .metasub, .curse .ladder { font-size: max(12px, var(--floor9)); } .curse .tierchip small { font-size: max(10px, var(--floor9)); }
+  .bottle .lab small { font-size: max(11px, var(--floor9)); }
+  .feat .ftext, .disc .dtext, .chartsea .prize { font-size: max(12px, var(--floor9)); }
+  .card .tag, .card .key { font-size: max(11px, var(--floor9)); } .card .lv { font-size: max(12px, var(--floor9)); }
+  #pause .affixkey { font-size: max(11.5px, var(--floor9)); }
+  /* the cards' number keys (1, 2, 3) are for a keyboard: not shown on a touch screen, as not with a pad */
+  body[data-device=touch] .card .key { display: none; }
+  /* ---- The ship's look (5 November 2026). Players found the flat dark panels "not appealing" and asked for wood, paper or
+     flags: the panels are planking in a carved frame with brass corners, the port's tabs are cloth flags hung from a line
+     that stir in the wind, the buttons brass plates or wooden boards, the guide's notes parchment (the title too, until 7 November 2026). The
+     textures are painted at start-up (game/src/uiskin.js: --wood, --woodframe, --cloth, --paper); until they are ready
+     the same colours as plain gradients. In port the screen behind is the captain's ship at anchor (harbour.js), so the
+     dimming round a menu is lighter there (body.harbour). */
+  body.harbour .overlay { background: radial-gradient(ellipse at center, rgba(4,8,12,0.12), rgba(2,5,10,0.6)); }
+  .panel { background-color: #3a2414;
+    background-image: linear-gradient(180deg, rgba(16,9,4,0.28), rgba(6,3,1,0.5)), var(--wood, linear-gradient(180deg, #3d2615, #24150a));
+    background-size: auto, 512px 256px;
+    border: 14px solid #5a3a20; border-image: var(--woodframe) 30 / 14px round; border-radius: 0;
+    box-shadow: 0 16px 50px rgba(0,0,0,0.75), inset 0 0 50px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,220,160,0.08); }
+  .panel h1, .panel h2 { text-shadow: 0 0 18px rgba(232,192,90,0.3), 0 2px 0 #2a1808, 0 3px 6px rgba(0,0,0,0.8); }
+  /* Sent to Davy Jones: the board holed, splintered and burnt, the ship's flag alight on its corner (wreckboard.js). Both
+     canvases are laid over the panel from beside it, so the damage can cover the frame without making the panel scroll. */
+  .wreck-damage, .wreck-cloth, .wreck-flag { position: absolute; pointer-events: none; z-index: 3; }
+  .overlay.wreck-wait > * { visibility: hidden; }  /* until the damage is on it (wreckboard.js show) */
+  /* what sits on the planking is let into it: darker, recessed, a thin brass line round it */
+  .cap, .meta, .sea, #capinfo, .setrow, .rack { background-color: rgba(14,8,3,0.55); background-image: linear-gradient(180deg, rgba(0,0,0,0.18), rgba(0,0,0,0.42));
+    box-shadow: inset 0 2px 6px rgba(0,0,0,0.65), 0 1px 0 rgba(255,220,160,0.07); }
+  .cap, .meta, .sea { border-color: rgba(200,160,80,0.5); }
+  .cap:hover, .sea:hover, .meta:hover { border-color: var(--gold); }
+  .cap.sel { border-color: #f6e6b0; box-shadow: inset 0 2px 6px rgba(0,0,0,0.6), 0 0 16px rgba(255,230,160,0.45); }
+  .meta.article { background-color: rgba(30,20,40,0.6); }
+
+  /* the port's tabs: flags of sailcloth on a line, swallow-tailed; the screen you are on is the red one, hanging lower.
+     They are drawn as cloth by flags3d.js (7 November 2026, the owner: flags drawn by the page, with shading, a tilt and a
+     displacement filter over them, read as "static cards" with "a heat shimmer"): with body.clothflags the page's flags are
+     see-through, and only take the clicks, the pointer and a pad's focus. What follows is their look without WebGL. */
+  .porttabs { gap: 7px; align-items: flex-start; padding-top: 5px; position: relative;
+    background: linear-gradient(180deg, transparent 4px, #2a1a0c 4px, #b48c52 5px, #7a5a30 7px, #2a1a0c 8px, transparent 8px) 0 0 / 100% 12px no-repeat; }
+  .pausetabs { position: relative; }
+  .ptab { opacity: 1; position: relative; color: #3a2310; text-shadow: 0 1px 0 rgba(255,250,230,0.45);
+    background: var(--cloth, #e6d5aa) 0 0 / 128px 128px; background-color: #e6d5aa;
+    border: 0; border-radius: 0; padding: 7px 14px 15px; margin-top: -1px;
+    clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 74%, 0 100%); }
+  .ptab::before { content: ''; position: absolute; inset: 0; pointer-events: none;
+    background: linear-gradient(90deg, rgba(60,30,10,0.18), transparent 22%, rgba(255,255,255,0.12) 48%, transparent 70%, rgba(60,30,10,0.2)); }
+  .ptab:hover { filter: brightness(1.07); }
+  .ptab.on { color: #f6dc8a; text-shadow: 0 1px 2px rgba(0,0,0,0.8); background-color: #8e1f14;
+    background-image: linear-gradient(180deg, rgba(150,30,20,0.86), rgba(110,18,12,0.92)), var(--cloth, none); background-size: auto, 128px 128px;
+    padding-bottom: 22px; }
+  @media (max-height: 620px) { .ptab { padding: 4px 10px 11px; } .ptab.on { padding-bottom: 16px; } }
+  /* each flag hangs ON the line: its top edge a hem sewn round it (the cloth flags paint the same hem) */
+  .porttabs .ptab::after { content: ''; position: absolute; left: 0; right: 0; top: 0; height: 6px; pointer-events: none;
+    background: linear-gradient(180deg, rgba(40,22,8,0.55) 0, rgba(255,240,205,0.35) 1px, rgba(90,55,25,0.35) 3px, rgba(40,22,8,0.45) 5px, transparent 6px); }
+  /* drawn as cloth (flags3d.js): the page's flags see-through over the canvas laid in their row */
+  body.clothflags .ptab { color: transparent; text-shadow: none; background: none; filter: none; }
+  body.clothflags .ptab::before, body.clothflags .ptab::after { display: none; }
+  .flaggl { position: absolute; left: -30px; top: -10px; width: calc(100% + 60px); height: calc(100% + 36px); pointer-events: none; z-index: 0; }
+  .porttabs > :not(.flaggl), .pausetabs > :not(.flaggl) { position: relative; z-index: 1; }
+  /* A narrow panel (a phone, the iPhone Duo, a large interface size) keeps the flags on one line by drawing them closer
+     and a little smaller (7 November 2026, the owner: on the Duo the Leave flag dropped to a row of its own). With
+     device/layout.js holding the panel at least PANEL_W (860) wide, the row and the purse fit in it this way. */
+  .panel:has(.porttabs) { container: port / inline-size; }
+  @container port (max-width: 960px) {
+    .porttabs { gap: 4px; }
+    .ptab { font-size: 17px; padding-left: 9px; padding-right: 9px; }
+    .porttabs .purse { font-size: 18px; margin-left: 6px; }
+    .porttabs::after { margin-left: 6px; }
+  }
+  /* a narrow screen wraps the flags onto several rows: no line drawn along only the first of them, and two pickers a row in the Dry Dock */
+  @media (max-width: 560px) { .porttabs { background: none; } .dpick { flex-basis: 120px; } }
+
+  /* buttons: a brass plate, or (the quieter ones) a board of dark wood, each held by two rivets */
+  .btn { position: relative; background: linear-gradient(180deg, #f8e08e 0%, #e2b556 42%, #b5832f 58%, #cf9c42 100%);
+    border: 1px solid #3f2808; border-radius: 4px;
+    box-shadow: inset 0 1px 0 rgba(255,250,215,0.75), inset 0 -2px 0 rgba(90,55,10,0.45), 0 3px 0 #3a2507, 0 6px 14px rgba(0,0,0,0.5);
+    text-shadow: 0 1px 0 rgba(255,240,200,0.5); }
+  .btn::after { content: ''; position: absolute; inset: 0; pointer-events: none; border-radius: inherit;
+    background: radial-gradient(circle at 9px 50%, rgba(255,245,200,0.95) 0 1px, #6b4a14 1.5px 2.6px, transparent 3px),
+      radial-gradient(circle at calc(100% - 9px) 50%, rgba(255,245,200,0.95) 0 1px, #6b4a14 1.5px 2.6px, transparent 3px); }
+  .btn.alt { color: var(--parch); border-color: #120a04; text-shadow: 0 1px 2px #000;
+    background-color: #4a2e18; background-image: linear-gradient(180deg, rgba(255,220,160,0.12), rgba(0,0,0,0.3)), var(--wood, linear-gradient(180deg, #5a3a20, #2e1c0e));
+    background-size: auto, 512px 256px; background-position: 0 0, 0 -64px;
+    box-shadow: inset 0 1px 0 rgba(255,220,160,0.18), inset 0 0 0 1px rgba(200,150,80,0.25), 0 3px 0 #140b04, 0 6px 14px rgba(0,0,0,0.5); }
+  .btn.alt::after { background: radial-gradient(circle at 9px 50%, #d8b268 0 1px, #3a2508 1.5px 2.4px, transparent 2.8px),
+      radial-gradient(circle at calc(100% - 9px) 50%, #d8b268 0 1px, #3a2508 1.5px 2.4px, transparent 2.8px); }
+  .btn.small::after, .btn.small.alt::after { display: none; }
+
+  /* the title is the same planking as every other menu (7 November 2026, the owner: parchment "doesn't fit with the rest
+     of the game"); parchment: the guide's notes */
+  #tut .tut-note { color: #2e1d0e; background-color: #e6d3a6; background-image: var(--paper, linear-gradient(180deg, #efe0bb, #d9c193)); background-size: 512px 512px;
+    border: 0; border-radius: 3px; box-shadow: 0 8px 30px rgba(0,0,0,0.7), inset 0 0 36px rgba(120,70,25,0.5); }
+  #tut .tut-title { color: #7c1d12; }
+  #tut .tut-skip, #tut .tut-count { color: #5a3a1c; opacity: 0.9; }</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div id="ui">
+  <div id="vignette"></div><div id="hurt"></div><div id="flash"></div><div id="ghostveil"></div><div id="drown"><canvas id="drowncv"></canvas></div>
+  <div class="hudgroup">
+    <div id="xpwrap"><div id="xpbar"></div><div id="xptext">Lv 1</div></div>
+    <div id="timer" class="hud">00:00</div>
+    <div id="kills" class="hud"></div>
+    <div id="hpwrap" class="hud">
+      <div class="label"><span id="shipname">Rowboat</span><span id="hptext">100 / 100</span></div>
+      <div id="hpbar-bg"><div id="hpbar"></div></div>
+    </div>
+    <div id="loadout" class="hud"></div>
+    <div id="tip"></div>
+    <div id="compass" class="hud">
+      <svg viewBox="0 0 100 100">
+        <circle cx="50" cy="50" r="46" fill="rgba(0,0,0,0.55)" stroke="#a8843a" stroke-width="2"/>
+        <text x="50" y="16" fill="#e8c05a" font-size="11" text-anchor="middle" font-family="serif">N</text>
+        <g id="windarrow"><polygon points="50,22 56,50 50,45 44,50" fill="#9fd0ff"/><polygon points="50,78 56,50 50,55 44,50" fill="#3a5a80"/></g>
+        <g id="secretneedle" style="display:none"><polygon points="50,6 56,18 44,18" fill="#ffd23a" stroke="#5a3d0f" stroke-width="1"/></g>
+        <!-- the nearest port: a small anchor on the rim, pale blue, never mistaken for the gold secret needle -->
+        <g id="portneedle" style="display:none" fill="none" stroke="#cfe8ff" stroke-width="1.6" stroke-linecap="round"><circle cx="50" cy="9" r="1.8"/><line x1="50" y1="10.8" x2="50" y2="19"/><line x1="47" y1="12.8" x2="53" y2="12.8"/><path d="M45.6 15.6 Q50 21 54.4 15.6"/></g>
+        <!-- the nearest challenge bell (a sea beaten before): a small red bell on the rim, apart from the anchor and the star -->
+        <g id="bellneedle" style="display:none" fill="#ff7a5a" stroke="#4a1208" stroke-width="0.8"><path d="M46.4 17.2 Q46.4 10.4 50 9.6 Q53.6 10.4 53.6 17.2 L55 18.6 L45 18.6 Z"/><circle cx="50" cy="20" r="1.3"/></g>
+      </svg>
+      <div id="weathertext">Clear</div>
+      <div id="timeofday">Morning</div>
+      <div id="tailwind">➤ Tailwind</div>
+      <div id="boon"></div>
+      <div id="secretdist"></div>
+      <div id="portdist"></div>
+      <div id="belldist"></div>
+    </div>
+  </div>
+  <div id="bosswrap" class="hud"><div id="mawclock">The Maw takes you in<b id="mawsecs"></b><div id="mawbar-bg"><div id="mawbar"></div></div></div><div id="bossname"></div><div id="bossbar-bg"><div id="bossbar"></div></div></div>
+  <div id="prompt" class="hud"><span id="prompttext"></span><div id="promptbar-bg"><div id="promptbar"></div></div></div>
+  <div id="bosstag"></div>
+  <div id="findtag"></div>
+  <div id="eventtag"></div>
+  <div id="announce"></div>
+  <div id="dmglayer"></div>
+  <div id="stick-base"></div><div id="stick-knob"></div>
+  <div id="pausebtn">II</div>
+
+  <div id="cardsov" class="overlay"><div class="panel">
+    <h2 id="cardstitle">Level Up!</h2>
+    <p class="sub" id="cardssub"></p>
+    <div class="cards" id="cards"></div>
+    <div class="cardfoot"><div class="slots" id="cardslots"></div><div class="btn small alt nav" id="cardbanish" data-pad="y">Banish</div><div class="btn small nav" id="cardreroll" data-pad="x">Reroll</div></div>
+  </div></div>
+
+  <div id="portov" class="overlay"><div class="panel">
+    <h2>A Free Port</h2>
+    <p class="sub">Your plunder is ashore and beyond the sea's reach.</p>
+    <div class="goldline" id="porttext"></div>
+    <p class="sub" style="max-width:520px;margin:10px auto 0">Sail on and everything you take from here is at risk again until the next port. Go home now and you keep it all — but the sea stays unconquered.</p>
+    <div class="btn nav" id="portstay" data-back>Sail On</div><div class="btn alt nav" id="portgo">Return to Port</div>
+  </div></div>
+
+  <div id="chestov" class="overlay"><div class="panel">
+    <h2>Treasure!</h2>
+    <p class="sub">The chest held:</p>
+    <div class="cards" id="chestcards"></div>
+    <div class="goldline" id="chestgold"></div>
+    <div class="btn nav" id="chestok" data-back>Claim</div>
+  </div></div>
+
+  <div id="musicov" class="overlay"><div class="panel" style="max-width:640px">
+    <h2>What shall the crew play, Captain?</h2>
+    <p class="sub">Two ways to sail. Move over one to hear it.</p>
+    <div class="musicopts" id="musicopts"></div>
+    <p class="musicnote">♪ Change your mind any time: <b>Settings → Music</b>.</p>
+  </div></div>
+
+  <div id="noteov" class="overlay"><div class="panel" style="max-width:560px">
+    <h2 id="notetitle"></h2>
+    <p id="notetext" style="font-style:italic;font-size:18px"></p>
+    <div class="goldline" id="notefoot" style="font-size:20px"></div>
+    <div class="btn nav" id="noteok" data-back>Continue</div>
+  </div></div>
+
+  <div id="settings" class="overlay"><div class="panel">
+    <div class="porttabs ingame-hide" data-tab="settings">
+      <div class="ptab nav" data-go="captains">Crew</div><div class="ptab nav" data-go="metaov">Shipwright</div>
+      <div class="ptab nav" data-go="dockov">Dry Dock</div><div class="ptab nav" data-go="statsov">Log</div><div class="ptab nav" data-go="chartsov">Charts</div><div class="ptab on nav" data-go="settings">Settings</div><div class="ptab nav" data-go="credits">Credits</div>
+      <div class="ptab nav" data-go="start">Leave</div>
+    </div>
+
+    <h2>Settings</h2>
+
+    <div class="setrow nav"><span>Music</span><input id="vol-music" type="range" min="0" max="1" step="0.05"/></div>
+
+    <div class="setrow nav"><span>Effects</span><input id="vol-sfx" type="range" min="0" max="1" step="0.05"/></div>
+
+    <div class="setrow nav" id="soundmix-open"><span>Sound mix</span><span class="opts"><span class="opt">Adjust each sound</span></span></div>
+
+    <div id="settingsrows"></div>
+
+    <div class="btn nav" id="settingsback" data-back>Done</div>
+
+    <div class="navhint"><span data-glyph="move"></span> choose &nbsp;·&nbsp; &lsaquo; &rsaquo; change &nbsp;·&nbsp; <span data-glyph="back"></span> back<span class="padkey" style="border:0;font-size:inherit;margin-left:6px">· LB RB tabs</span></div>
+
+  </div></div>
+
+  <div id="soundov" class="overlay"><div class="panel">
+    <h2>Sound mix</h2>
+    <p class="mixlede">Turn any group of sounds, or any one sound, up or down against the game’s own balance. The lowest setting turns it off.</p>
+    <div id="mixrows"></div>
+    <div class="mixbtns"><div class="btn small alt nav" id="mixreset">Reset all</div><div class="btn nav" id="mixdone" data-back>Done</div></div>
+  </div></div>
+
+  <div id="pause" class="overlay"><div class="panel">
+    <h2>Anchored</h2>
+    <!-- one thing at a time (5 November 2026: the owner found the pause menu cluttered): the ship, the ring colours, the card colours -->
+    <div class="pausetabs"><span class="ptab pausetab nav on" data-sec="ship">Your ship</span><span class="ptab pausetab nav" data-sec="rings">Ring colours</span><span class="ptab pausetab nav" data-sec="cards">Card colours</span></div>
+    <div class="pausesec on" data-sec="ship"><div class="stats" id="statsheet"></div><div class="voyline" id="voyline"></div></div>
+    <div class="pausesec affixkey" data-sec="rings" id="affixkey"></div>
+    <div class="pausesec affixkey" data-sec="cards" id="cardkey"></div>
+    <div class="btn nav" id="resume" data-back>Resume</div><div class="btn alt nav" id="opensettings">Settings</div><div class="btn alt nav" id="abandon">Abandon Run</div><div class="btn alt nav desktop-only" id="quit-pause">Quit to Desktop</div>
+  </div></div>
+
+  <div id="fullov" class="overlay"><div class="panel">
+    <h2>The Full Voyage</h2>
+    <p class="sub" id="fullsub">You have sailed the Shallows. There are six more seas out there.</p>
+    <div class="demopitch" id="fullpitch"></div>
+    <div class="btn nav" id="fullbuy"></div><div class="btn alt nav" id="fullrestore" style="display:none">Restore purchase</div><div class="btn alt nav" id="fullback" data-back>Back</div>
+    <p class="sub" id="fullnote" style="font-size:14px;opacity:.75"></p>
+  </div></div>
+
+  <div id="endov" class="overlay"><div class="panel">
+    <h1 id="endtitle"></h1>
+    <p id="endsummary"></p>
+    <div class="stats" id="endstats"></div>
+    <div class="unlocks" id="endunlocks"></div>
+    <div class="demo-only demopitch" id="endpitch"></div>
+    <div class="btn nav" id="endok" data-back>Return to Port</div><div class="btn alt nav demo-only" id="fullvoyage-end">The Full Voyage</div>
+  </div></div>
+
+  <div id="captains" class="overlay"><div class="panel caps" style="position:relative">
+    <div class="purse" id="purse1"></div>
+    <div class="porttabs" data-tab="captains">
+      <div class="ptab on nav" data-go="captains">Crew</div><div class="ptab nav" data-go="metaov">Shipwright</div>
+      <div class="ptab nav" data-go="dockov">Dry Dock</div><div class="ptab nav" data-go="statsov">Log</div><div class="ptab nav" data-go="chartsov">Charts</div><div class="ptab nav" data-go="settings">Settings</div><div class="ptab nav" data-go="credits">Credits</div>
+      <div class="ptab nav" data-go="start">Leave</div>
+    </div>
+    <h2>Choose Your Captain</h2>
+    <!-- landscape phones: the roster scrolls on the left, the ship's papers and the buttons stay put on the right -->
+    <div class="capcols">
+      <div class="capscroll"><div class="grid" id="capgrid" data-cols="5"></div></div>
+      <div class="capside">
+        <div id="capinfo"></div>
+        <div class="capbtns">
+          <div class="btn nav" id="capgo">Choose a Sea</div><div class="btn alt nav" id="capbuy" style="display:none"></div><div class="btn alt nav" id="capback" data-back>Back</div>
+        </div>
+      </div>
+    </div>
+  </div></div>
+
+  <!-- the maker of the player's own captain: a screen of its own, the choices side by side (ui.js showMaker) -->
+  <div id="makerov" class="overlay"><div class="panel makerpanel">
+    <h2>Make Your Own Captain</h2>
+    <div id="makerbody"></div>
+  </div></div>
+
+  <div id="seasov" class="overlay"><div class="panel" style="position:relative">
+    <h2>Choose Your Sea</h2>
+    <p class="sub">Sink the final boss at 20:00 to clear a sea and open the next.</p>
+    <div class="seas" id="seagrid"></div>
+    <div class="btn alt nav" id="seaback" data-back>Back</div>
+  </div></div>
+
+  <div id="start" class="overlay"><div class="panel">
+    <h1>One More Broadside</h1>
+    <p class="sub" style="font-style:italic">A pirate-ship survivors roguelike<span class="demo-only demotag">DEMO</span></p>
+    <p>Start in a rowing boat. Survive, grow your ship through six hulls, and sink what rules each sea.</p>
+    <div class="controls no-touch"><b>Move:</b> point where you want to sail. <b>WASD</b> / arrows · <b>left stick</b> · or <b>hold the mouse</b>. Guns fire on their own.<br/>
+      <b>Pause:</b> P / Esc / Start. <b>Zoom:</b> wheel / + and - / right stick. <b>Cards:</b> click, 1-4, or stick + Ⓐ. <b>M</b> mutes.</div>
+    <div class="controls pad-only"><b>Move:</b> the <b>left stick</b>; the ship sails the way you push it. Guns fire on their own.<br/>
+      <b>Pause:</b> Start. <b>Zoom:</b> right stick. <b>Cards:</b> stick + Ⓐ, Ⓧ reroll, Ⓨ banish. <b>Back:</b> Ⓑ. <b>Tabs:</b> LB / RB.</div>
+    <div class="controls touch-only"><b>Move:</b> <b>drag anywhere</b> on the screen and the ship sails that way. Your guns fire on their own.<br/>
+      <b>Zoom:</b> pinch with two fingers. <b>Cards:</b> tap one. <b>Pause:</b> the button in the corner.</div>
+    <div class="btn nav" id="play">Make Port</div><div class="btn alt nav demo-only" id="fullvoyage-title">The Full Voyage</div><div class="btn alt nav" id="whatsnew-title">What's new</div><div class="btn alt nav desktop-only" id="quit-title">Quit</div>
+  </div></div>
+
+  <div id="metaov" class="overlay"><div class="panel" style="position:relative">
+    <div class="purse" id="purse2"></div>
+    <div class="porttabs" data-tab="metaov">
+      <div class="ptab nav" data-go="captains">Crew</div><div class="ptab on nav" data-go="metaov">Shipwright</div>
+      <div class="ptab nav" data-go="dockov">Dry Dock</div><div class="ptab nav" data-go="statsov">Log</div><div class="ptab nav" data-go="chartsov">Charts</div><div class="ptab nav" data-go="settings">Settings</div><div class="ptab nav" data-go="credits">Credits</div>
+      <div class="ptab nav" data-go="start">Leave</div>
+    </div>
+    <h2>The Shipwright</h2>
+    <p class="sub">Permanent upgrades for every voyage, paid for out of the same purse as new captains. Each point is a little dearer than the last.</p>
+    <div class="metagrid" id="metagrid"></div>
+  </div></div>
+
+  <div id="dockov" class="overlay"><div class="panel" style="position:relative">
+    <div class="purse" id="purse4"></div>
+    <div class="porttabs" data-tab="dockov">
+      <div class="ptab nav" data-go="captains">Crew</div><div class="ptab nav" data-go="metaov">Shipwright</div>
+      <div class="ptab on nav" data-go="dockov">Dry Dock</div><div class="ptab nav" data-go="statsov">Log</div><div class="ptab nav" data-go="chartsov">Charts</div>
+      <div class="ptab nav" data-go="settings">Settings</div><div class="ptab nav" data-go="credits">Credits</div><div class="ptab nav" data-go="start">Leave</div>
+    </div>
+    <h2>The Dry Dock</h2>
+    <p class="sub">Each captain's ships in bottles. Tap one to open it; choose her paint above. Colours are earned by sinking ships and beating seas with her.</p>
+    <div class="dock" id="dock"></div>
+  </div></div>
+
+  <div id="statsov" class="overlay"><div class="panel" style="position:relative">
+    <div class="purse" id="purse3"></div>
+    <div class="porttabs" data-tab="statsov">
+      <div class="ptab nav" data-go="captains">Crew</div><div class="ptab nav" data-go="metaov">Shipwright</div>
+      <div class="ptab nav" data-go="dockov">Dry Dock</div><div class="ptab on nav" data-go="statsov">Log</div><div class="ptab nav" data-go="chartsov">Charts</div><div class="ptab nav" data-go="settings">Settings</div><div class="ptab nav" data-go="credits">Credits</div>
+      <div class="ptab nav" data-go="start">Leave</div>
+    </div>
+    <h2>The Ship's Log</h2>
+    <div class="logcols">
+      <div class="logstats nav" id="logstats" data-scroll></div>
+      <div class="logfeats"><div class="feathead" id="feathead"></div><div class="featlist nav" id="featlist" data-scroll></div></div>
+    </div>
+  </div></div>
+
+  <div id="chartsov" class="overlay"><div class="panel" style="position:relative">
+    <div class="purse" id="purse4"></div>
+    <div class="porttabs" data-tab="chartsov">
+      <div class="ptab nav" data-go="captains">Crew</div><div class="ptab nav" data-go="metaov">Shipwright</div>
+      <div class="ptab nav" data-go="dockov">Dry Dock</div><div class="ptab nav" data-go="statsov">Log</div><div class="ptab on nav" data-go="chartsov">Charts</div><div class="ptab nav" data-go="settings">Settings</div><div class="ptab nav" data-go="credits">Credits</div>
+      <div class="ptab nav" data-go="start">Leave</div>
+    </div>
+    <h2>Charts of Discovery</h2>
+    <div class="charts nav" id="charts" data-scroll></div>
+  </div></div>
+
+  <div id="loading"><div class="title">One More Broadside</div><div id="loadbar"><div id="loadfill"></div></div><div id="loadtext" style="margin-top:8px;font-size:14px;opacity:.7">Hoisting sails…</div></div>
+</div>
+<script>window.GAME_VERSION="1.3.2";</script>
+<script type="module" src="./js/main.js"></script>
+</body>
+</html>

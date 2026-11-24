@@ -1,0 +1,117 @@
+/* One More Broadside: the public site. The game's own fonts (SIL Open Font License, texts in assets/fonts). */
+@font-face { font-family: 'Pirata One'; font-style: normal; font-weight: 400; font-display: swap; src: url(fonts/PirataOne-normal-2.woff2) format('woff2'); }
+@font-face { font-family: 'IM Fell English'; font-style: normal; font-weight: 400; font-display: swap; src: url(fonts/IMFellEnglish-normal-1.woff2) format('woff2'); }
+@font-face { font-family: 'IM Fell English'; font-style: italic; font-weight: 400; font-display: swap; src: url(fonts/IMFellEnglish-italic-0.woff2) format('woff2'); }
+
+:root {
+  --sea: #06121c; --deep: #0a1c2a; --panel: #0e2536; --line: #1f3f55;
+  --ink: #f1e8d3; --muted: #a9b6bf; --gold: #f2c75c; --gold-deep: #b9862a; --teal: #58c4d2; --red: #d8533f;
+  --title: 'Pirata One', 'IM Fell English', Georgia, serif; --serif: 'IM Fell English', Georgia, serif;
+  --sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body { margin: 0; background: var(--sea); color: var(--ink); font: 17px/1.6 var(--sans); -webkit-text-size-adjust: 100%; }
+img, video { max-width: 100%; display: block; }
+a { color: var(--teal); }
+a:focus-visible, button:focus-visible, summary:focus-visible { outline: 3px solid var(--gold); outline-offset: 3px; border-radius: 4px; }
+.wrap { width: min(1080px, 100% - 32px); margin-inline: auto; }
+.narrow { width: min(760px, 100% - 32px); margin-inline: auto; }
+h1, h2, h3 { font-family: var(--title); font-weight: 400; color: var(--gold); line-height: 1.1; margin: 0; text-wrap: balance; }
+h2 { font-size: clamp(34px, 5.2vw, 52px); text-align: center; }
+h3 { font-size: 28px; }
+p { margin: 0 0 14px; }
+.lede { font: italic clamp(19px, 2.4vw, 23px)/1.5 var(--serif); color: var(--ink); text-wrap: pretty; }
+.muted { color: var(--muted); }
+.rule { display: flex; align-items: center; gap: 14px; justify-content: center; margin: 0 0 22px; }
+.rule::before, .rule::after { content: ''; height: 1px; flex: 1; max-width: 180px; background: linear-gradient(90deg, transparent, var(--gold-deep)); }
+.rule::after { transform: scaleX(-1); }
+section { padding: clamp(44px, 7vw, 84px) 0; }
+section + section { border-top: 1px solid rgba(242, 199, 92, 0.12); }
+
+/* top: the key art, the logo, the one line that says what the game is, and where to get it */
+.hero { position: relative; isolation: isolate; padding: 0; text-align: center; }
+.hero picture, .hero picture img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 55% 40%; z-index: -2; }
+.hero::after { content: ''; position: absolute; inset: 0; z-index: -1; background: linear-gradient(180deg, rgba(6,18,28,0.55) 0%, rgba(6,18,28,0.35) 35%, rgba(6,18,28,0.82) 78%, var(--sea) 100%); }
+.hero-in { padding: clamp(28px, 6vw, 64px) 0 clamp(36px, 6vw, 60px); }
+.hero .logo { width: min(520px, 78vw); height: auto; margin: 0 auto 10px; filter: drop-shadow(0 6px 22px rgba(0,0,0,0.6)); }
+.hero h1 { font-size: clamp(30px, 4.6vw, 46px); color: var(--ink); text-shadow: 0 2px 14px rgba(0,0,0,0.8); }
+.hero .lede { max-width: 34em; margin: 12px auto 0; text-shadow: 0 2px 10px rgba(0,0,0,0.9); }
+.when { display: inline-block; margin: 18px 0 0; padding: 6px 14px; border: 1px solid var(--gold-deep); border-radius: 999px; background: rgba(6,18,28,0.7); color: var(--gold); font: 400 20px/1.2 var(--title); letter-spacing: 0.03em; }
+
+.stores { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; margin: 22px 0 0; padding: 0; list-style: none; }
+.btn { display: inline-flex; flex-direction: column; align-items: center; justify-content: center; min-width: 220px; min-height: 64px; padding: 10px 20px; border-radius: 10px; text-decoration: none;
+  border: 1px solid var(--gold-deep); background: linear-gradient(180deg, #17364b, #0c2231); color: var(--ink); box-shadow: 0 6px 18px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.08); transition: transform .12s ease, border-color .12s ease; }
+.btn:hover { transform: translateY(-2px); border-color: var(--gold); }
+.btn b { font: 400 24px/1.1 var(--title); color: var(--gold); letter-spacing: 0.02em; }
+.btn span { font-size: 13.5px; color: var(--muted); }
+.btn.main { background: linear-gradient(180deg, #f6d377, #d09a2f); border-color: #ffe9a8; }
+.btn.main b { color: #2a1804; } .btn.main span { color: #4a3209; }
+
+/* the trailer */
+.player { position: relative; aspect-ratio: 16 / 9; border-radius: 12px; overflow: hidden; border: 1px solid var(--gold-deep); background: #000; box-shadow: 0 18px 50px rgba(0,0,0,0.55); }
+.player video { width: 100%; height: 100%; }
+.more { text-align: center; margin: 16px 0 0; }
+.more a { font: 400 21px/1.2 var(--title); color: var(--gold); text-decoration: none; }
+.more a::after { content: ' \2192'; }
+.more a:hover { text-decoration: underline; }
+
+/* what the game is: three plain steps, each with a short loop */
+.steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 22px; margin-top: 30px; }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; display: flex; flex-direction: column; }
+.card video, .card img { aspect-ratio: 16 / 9; width: 100%; object-fit: cover; background: var(--deep); }
+.card div { padding: 16px 18px 18px; }
+.card h3 { margin-bottom: 6px; }
+.card p { margin: 0; color: var(--ink); }
+.num { font: 400 18px/1 var(--title); color: var(--sea); background: var(--gold); border-radius: 999px; width: 30px; height: 30px; display: inline-grid; place-items: center; margin-right: 8px; vertical-align: 4px; }
+
+.facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin: 30px 0 0; padding: 0; list-style: none; text-align: center; }
+.facts li { background: var(--deep); border: 1px solid var(--line); border-radius: 10px; padding: 14px 8px; }
+.facts b { display: block; font: 400 40px/1 var(--title); color: var(--gold); font-variant-numeric: tabular-nums; }
+.facts span { font-size: 15px; color: var(--muted); }
+
+.split { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 28px; align-items: center; margin-top: 34px; }
+.split video, .split img { border-radius: 12px; border: 1px solid var(--line); aspect-ratio: 16 / 9; width: 100%; object-fit: cover; background: var(--deep); }
+.split h3 { font-size: 34px; margin-bottom: 8px; }
+
+.gallery { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 10px; margin-top: 28px; padding: 0; list-style: none; }
+.gallery a { display: block; border-radius: 8px; overflow: hidden; border: 1px solid var(--line); }
+.gallery a:hover { border-color: var(--gold); }
+.gallery img { aspect-ratio: 16 / 9; width: 100%; object-fit: cover; }
+
+/* where to play */
+.where { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; margin-top: 28px; padding: 0; list-style: none; }
+.where li { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 18px; display: flex; flex-direction: column; gap: 6px; }
+.where h3 { font-size: 26px; }
+.where p { margin: 0; color: var(--muted); font-size: 15.5px; flex: 1; }
+.where a { font: 400 21px/1.2 var(--title); color: var(--gold); text-decoration: none; margin-top: 8px; }
+.where a::after { content: ' \2192'; }
+.where a:hover { text-decoration: underline; }
+
+footer { border-top: 1px solid rgba(242, 199, 92, 0.2); padding: 34px 0 60px; color: var(--muted); font-size: 15px; text-align: center; }
+footer nav { display: flex; flex-wrap: wrap; gap: 8px 22px; justify-content: center; margin-bottom: 14px; }
+footer nav a { color: var(--ink); }
+footer p { margin: 4px 0; }
+
+/* the press kit */
+.press h2 { text-align: left; font-size: clamp(30px, 4.4vw, 42px); margin: 44px 0 14px; }
+.press h1 { font-size: clamp(44px, 7vw, 68px); }
+.press table { width: 100%; border-collapse: collapse; font-size: 16px; }
+.press th, .press td { text-align: left; vertical-align: top; padding: 8px 10px 8px 0; border-bottom: 1px solid var(--line); }
+.press th { width: 9.5em; color: var(--muted); font-weight: 400; }
+.press ul { padding-left: 22px; margin: 0 0 14px; } .press li { margin: 5px 0; }
+.dl { display: inline-flex; align-items: center; gap: 10px; padding: 12px 20px; border-radius: 10px; background: linear-gradient(180deg, #f6d377, #d09a2f); color: #2a1804; font: 400 24px/1.1 var(--title); text-decoration: none; border: 1px solid #ffe9a8; }
+.dl small { font: 13.5px var(--sans); color: #4a3209; }
+.copybox { background: var(--deep); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; margin: 0 0 12px; }
+.copybox p:last-child { margin: 0; }
+.tag { font-size: 12.5px; letter-spacing: 0.09em; text-transform: uppercase; color: var(--muted); margin: 0 0 4px; }
+.art { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 10px; padding: 0; list-style: none; }
+.art a { display: block; background: var(--deep); border: 1px solid var(--line); border-radius: 8px; overflow: hidden; color: var(--muted); font-size: 13.5px; text-decoration: none; }
+.art a:hover { border-color: var(--gold); }
+.art img { aspect-ratio: 16 / 9; width: 100%; object-fit: contain; background: #04101a; }
+.art span { display: block; padding: 6px 8px; }
+.back { display: inline-block; margin: 26px 0 8px; }
+
+@media (max-width: 520px) { .stores li { width: 100%; } .btn { width: 100%; min-width: 0; } body { font-size: 16px; } }
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } .btn { transition: none; } }

@@ -1,0 +1,17 @@
+{
+  "bpm": 110.6,
+  "beatsPerBar": 4,
+  "whole": true,
+  "bars": 0,
+  "seconds": 285.15,
+  "loopStart": 0,
+  "loopEnd": 285.15,
+  "loopSeconds": 285.15,
+  "introSeconds": 0,
+  "crossfadeSeconds": 0,
+  "match": 1,
+  "seamError": 1.0096,
+  "sourceHead": 0.12619,
+  "sourceSeconds": 285.91,
+  "gainDb": -3.44
+}
